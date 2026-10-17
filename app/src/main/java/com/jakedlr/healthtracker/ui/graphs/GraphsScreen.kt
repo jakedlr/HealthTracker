@@ -1,49 +1,46 @@
 package com.jakedlr.healthtracker.ui.graphs
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.jakedlr.healthtracker.domain.DailyValue
+import com.jakedlr.healthtracker.domain.GraphRange
 import com.jakedlr.healthtracker.ui.BackButton
-import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
-import com.patrykandpatrick.vico.compose.cartesian.Zoom
-import com.patrykandpatrick.vico.compose.cartesian.axis.HorizontalAxis
-import com.patrykandpatrick.vico.compose.cartesian.axis.VerticalAxis
-import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
-import com.patrykandpatrick.vico.compose.cartesian.data.CartesianLayerRangeProvider
-import com.patrykandpatrick.vico.compose.cartesian.data.CartesianValueFormatter
-import com.patrykandpatrick.vico.compose.cartesian.data.lineModel
-import com.patrykandpatrick.vico.compose.cartesian.layer.LineCartesianLayer
-import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLine
-import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLineCartesianLayer
-import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
-import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
-import com.patrykandpatrick.vico.compose.cartesian.rememberVicoZoomState
-import com.patrykandpatrick.vico.compose.common.Fill
-import com.patrykandpatrick.vico.compose.common.component.rememberShapeComponent
+import com.jakedlr.healthtracker.ui.formatDuration
+import com.jakedlr.healthtracker.ui.formatGrams
+import com.jakedlr.healthtracker.ui.formatKcal
+import com.jakedlr.healthtracker.ui.formatLbs
+import com.patrykandpatrick.vico.compose.common.ProvideVicoTheme
+import com.patrykandpatrick.vico.compose.m3.common.rememberM3VicoTheme
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import kotlin.math.ceil
-import kotlin.math.floor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -61,14 +58,133 @@ fun GraphsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+                .padding(horizontal = 16.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text("Weight (lbs)", style = MaterialTheme.typography.titleMedium)
+            RangeSelector(state.range, viewModel::onRangeChange)
+            val bounds = state.bounds
             when {
                 state.loading -> Unit
-                state.weight.isEmpty() -> EmptyChart("No weight entries yet")
-                else -> DailyLineChart(state.weight, state.bounds!!)
+                bounds == null -> EmptyChart("Nothing to show for this range")
+                else -> ProvideVicoTheme(rememberM3VicoTheme()) { Charts(state, bounds) }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun RangeSelector(selected: GraphRange, onSelect: (GraphRange) -> Unit) {
+    val ranges = GraphRange.entries
+    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+        ranges.forEachIndexed { i, range ->
+            SegmentedButton(
+                selected = range == selected,
+                onClick = { onSelect(range) },
+                shape = SegmentedButtonDefaults.itemShape(index = i, count = ranges.size),
+                icon = {},
+            ) { Text(range.label, maxLines = 1) }
+        }
+    }
+}
+
+@Composable
+private fun Charts(state: GraphsUiState, bounds: ClosedRange<LocalDate>) {
+    val s = state.series
+    val colors = MaterialTheme.colorScheme
+    val macroColors = macroPalette()
+
+    ChartCard("Weight (lbs)") {
+        if (s.weight.isEmpty()) {
+            EmptyChart("No weight in this range")
+        } else {
+            DailyChart(
+                series = listOf(ChartSeries("Weight", colors.primary, s.weight)),
+                bounds = bounds,
+                style = ChartStyle.LINES,
+                fromZero = false,
+                formatValue = { _, v -> "${formatLbs(v)} lbs" },
+            )
+        }
+    }
+
+    ChartCard("Calories (kcal)") {
+        if (s.calories.isEmpty()) {
+            EmptyChart("No food in this range")
+        } else {
+            DailyChart(
+                series = listOf(ChartSeries("Calories", colors.tertiary, s.calories)),
+                bounds = bounds,
+                style = ChartStyle.BARS,
+                fromZero = true,
+                formatValue = { _, v -> "${formatKcal(v)} kcal" },
+            )
+        }
+    }
+
+    ChartCard("Macros (g)") {
+        if (s.protein.isEmpty()) {
+            EmptyChart("No food in this range")
+        } else {
+            val macros = listOf(
+                ChartSeries("Protein", macroColors[0], s.protein),
+                ChartSeries("Carbs", macroColors[1], s.carbs),
+                ChartSeries("Fat", macroColors[2], s.fat),
+                ChartSeries("Fiber", macroColors[3], s.fiber),
+            )
+            DailyChart(
+                series = macros,
+                bounds = bounds,
+                style = ChartStyle.LINES,
+                fromZero = true,
+                formatValue = { i, v -> "${macros[i].label} ${formatGrams(v)} g" },
+            )
+            Legend(macros)
+        }
+    }
+
+    ChartCard("Sleep (hours)") {
+        if (s.sleepHours.isEmpty()) {
+            EmptyChart("No sleep in this range")
+        } else {
+            DailyChart(
+                series = listOf(ChartSeries("Sleep", colors.secondary, s.sleepHours)),
+                bounds = bounds,
+                style = ChartStyle.BARS,
+                fromZero = true,
+                formatValue = { _, v -> formatDuration((v * 3_600_000).toLong()) },
+            )
+        }
+    }
+}
+
+/** Four macro colors that stay distinct in light and dark themes. */
+@Composable
+private fun macroPalette(): List<Color> =
+    if (MaterialTheme.colorScheme.background.luminance() < 0.5f) {
+        listOf(Color(0xFF8AB4F8), Color(0xFFFDD663), Color(0xFFF28B82), Color(0xFF81C995))
+    } else {
+        listOf(Color(0xFF1A73E8), Color(0xFFE37400), Color(0xFFD93025), Color(0xFF188038))
+    }
+
+@Composable
+private fun ChartCard(title: String, content: @Composable () -> Unit) {
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(title, style = MaterialTheme.typography.titleMedium)
+            content()
+        }
+    }
+}
+
+@Composable
+private fun Legend(series: List<ChartSeries>) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        series.forEach { s ->
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Box(Modifier.size(10.dp).background(s.color, CircleShape))
+                Text(s.label, style = MaterialTheme.typography.bodySmall)
             }
         }
     }
@@ -76,70 +192,7 @@ fun GraphsScreen(
 
 @Composable
 private fun EmptyChart(message: String) {
-    Box(Modifier.fillMaxWidth().height(240.dp), contentAlignment = Alignment.Center) {
+    Box(Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
         Text(message, style = MaterialTheme.typography.bodyMedium)
     }
-}
-
-/**
- * Line chart with one x unit per day (epoch day), so days without data are horizontal gaps
- * between points rather than zeros.
- */
-@Composable
-private fun DailyLineChart(points: List<DailyValue>, bounds: ClosedRange<LocalDate>) {
-    val modelProducer = remember { CartesianChartModelProducer() }
-    LaunchedEffect(points) {
-        modelProducer.runTransaction {
-            lineModel {
-                series(
-                    x = points.map { it.date.toEpochDay() },
-                    y = points.map { it.value },
-                )
-            }
-        }
-    }
-
-    val minX = bounds.start.toEpochDay().toDouble()
-    val maxX = bounds.endInclusive.toEpochDay().toDouble()
-    // Pad the y-axis around the data instead of starting at zero, so small changes are visible.
-    val minY = floor(points.minOf { it.value } - 2)
-    val maxY = ceil(points.maxOf { it.value } + 2)
-    // Aim for roughly five date labels whatever the span.
-    val labelSpacing = ((maxX - minX) / 4).toInt().coerceAtLeast(1)
-    val dateFormatter = remember { DateTimeFormatter.ofPattern("M/d") }
-    val color = MaterialTheme.colorScheme.primary
-
-    CartesianChartHost(
-        chart = rememberCartesianChart(
-            rememberLineCartesianLayer(
-                lineProvider = LineCartesianLayer.LineProvider.series(
-                    LineCartesianLayer.rememberLine(
-                        fill = LineCartesianLayer.LineFill.single(Fill(color)),
-                        areaFill = null,
-                        pointProvider = LineCartesianLayer.PointProvider.single(
-                            LineCartesianLayer.Point(
-                                rememberShapeComponent(fill = Fill(color), shape = CircleShape),
-                                size = 6.dp,
-                            ),
-                        ),
-                    ),
-                ),
-                rangeProvider = CartesianLayerRangeProvider.fixed(minX = minX, maxX = maxX, minY = minY, maxY = maxY),
-            ),
-            startAxis = VerticalAxis.rememberStart(),
-            bottomAxis = HorizontalAxis.rememberBottom(
-                valueFormatter = CartesianValueFormatter { _, value, _ ->
-                    LocalDate.ofEpochDay(value.toLong()).format(dateFormatter)
-                },
-                itemPlacer = remember(labelSpacing) {
-                    HorizontalAxis.ItemPlacer.aligned(spacing = { labelSpacing })
-                },
-            ),
-            getXStep = { _, _, _ -> 1.0 },
-        ),
-        modelProducer = modelProducer,
-        scrollState = rememberVicoScrollState(scrollEnabled = false),
-        zoomState = rememberVicoZoomState(zoomEnabled = false, initialZoom = Zoom.Content),
-        modifier = Modifier.fillMaxWidth().height(240.dp),
-    )
 }

@@ -69,9 +69,13 @@ class FoodRepository(
     suspend fun deleteItem(item: FoodItem) = dao.deleteItem(item)
 
     fun observeLogsForDay(date: LocalDate, zone: ZoneId): Flow<List<FoodLog>> =
+        observeLogsForDates(date..date, zone)
+
+    /** Logs eaten on any local day in [dates]. */
+    fun observeLogsForDates(dates: ClosedRange<LocalDate>, zone: ZoneId): Flow<List<FoodLog>> =
         dao.observeLogsBetween(
-            start = date.atStartOfDay(zone).toInstant().toEpochMilli(),
-            end = date.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli(),
+            start = dates.start.atStartOfDay(zone).toInstant().toEpochMilli(),
+            end = dates.endInclusive.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli(),
         )
 
     fun observeEatenAtRange(): Flow<EatenAtRange> = dao.observeEatenAtRange()

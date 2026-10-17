@@ -35,13 +35,17 @@ class SleepRepository(
     }
 
     /** Entries whose assigned date (see sleepDate) is [date]. */
-    fun observeSleepForDate(date: LocalDate, zone: ZoneId): Flow<List<SleepEntry>> {
-        // Assigned to [date] means starting between noon on [date] and noon the next day;
+    fun observeSleepForDate(date: LocalDate, zone: ZoneId): Flow<List<SleepEntry>> =
+        observeSleepForDates(date..date, zone)
+
+    /** Entries whose assigned date falls in [dates]. */
+    fun observeSleepForDates(dates: ClosedRange<LocalDate>, zone: ZoneId): Flow<List<SleepEntry>> {
+        // Assigned to a date means starting between noon that day and noon the next;
         // query a wider window and filter with the domain rule so the two can't disagree.
-        val from = date.atStartOfDay(zone).toInstant().toEpochMilli()
-        val to = date.plusDays(2).atStartOfDay(zone).toInstant().toEpochMilli()
+        val from = dates.start.atStartOfDay(zone).toInstant().toEpochMilli()
+        val to = dates.endInclusive.plusDays(2).atStartOfDay(zone).toInstant().toEpochMilli()
         return dao.observeStartingBetween(from, to).map { entries ->
-            entries.filter { sleepDate(it.startAt, zone) == date }
+            entries.filter { sleepDate(it.startAt, zone) in dates }
         }
     }
 

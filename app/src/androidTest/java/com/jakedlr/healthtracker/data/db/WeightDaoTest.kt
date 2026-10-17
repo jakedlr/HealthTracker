@@ -57,4 +57,17 @@ class WeightDaoTest {
 
         assertNull(dao.getByDate(entry.date))
     }
+
+    @Test
+    fun observeBetween_isInclusive_andDateRangeReportsExtremes() = runTest {
+        assertNull(dao.observeDateRange().first().first)
+        (1..9).forEach { dao.upsert(WeightEntry(LocalDate.of(2026, 10, it), 180.0 + it)) }
+
+        val between = dao.observeBetween(LocalDate.of(2026, 10, 3), LocalDate.of(2026, 10, 5)).first()
+        assertEquals((3..5).map { LocalDate.of(2026, 10, it) }, between.map { it.date })
+
+        val range = dao.observeDateRange().first()
+        assertEquals(LocalDate.of(2026, 10, 1), range.first)
+        assertEquals(LocalDate.of(2026, 10, 9), range.last)
+    }
 }

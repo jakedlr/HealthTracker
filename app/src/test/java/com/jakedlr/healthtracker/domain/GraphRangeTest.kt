@@ -9,9 +9,9 @@ class GraphRangeTest {
     private val today = LocalDate.of(2026, 10, 16)
 
     @Test
-    fun week_clampsStartToOneWeekAgo_whenDataIsOlder() {
+    fun week_isSevenDaysCountingToday_whenDataIsOlder() {
         val bounds = graphBounds(GraphRange.WEEK, today, LocalDate.of(2026, 1, 1), today)
-        assertEquals(LocalDate.of(2026, 10, 9)..today, bounds)
+        assertEquals(LocalDate.of(2026, 10, 10)..today, bounds)
     }
 
     @Test

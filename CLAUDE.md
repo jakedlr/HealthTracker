@@ -89,8 +89,17 @@ Editing a food_item must **never** change existing food_log rows; only future lo
 - Each measurement contributes its date: weight its `date`, food the local date of `eaten_at`, sleep its **assigned** date.
 - Start = max(`firstAny`, today − range) (for "all time," Start = `firstAny`)
 - End = min(today, `lastAny`)
-- "today − range" is taken literally: `minusWeeks(1)`, `minusMonths(1)`, `minusMonths(3)`, so "last week" spans 8 calendar days counting today. If start > end (all data older than the range), there's nothing to plot.
-- Charts plot by date (x = epoch day, one step per day), so missing days show as horizontal space. The weight line connects across gaps, with a dot on each data point; the y-axis is padded around the data instead of starting at 0.
+- "today − range": last week = `today.minusDays(6)` (**7 calendar days counting today**); last month = `minusMonths(1)`; last 3 months = `minusMonths(3)`. If start > end (all data older than the range), there's nothing to plot.
+- The selected range defaults to **Month** and is remembered between launches (`GraphPreferences`, on-device SharedPreferences).
+
+**Charts** (all four share the window above, so a given day lines up across them)
+- Plotted by date (x = epoch day, one step per day), so missing days show as horizontal space.
+- Weight: line with dots, connected across gaps; y-axis padded around the data.
+- Calories: bars per day, y from 0. A day with no food has no bar.
+- Macros: four lines with dots (protein, carbs, fat, fiber) on one chart, y from 0, with a color legend.
+- Sleep: bars of hours per assigned day, y from 0.
+- Date labels: weekday names for a week, M/d for longer spans, M/d/yy beyond about a year; about five labels. Tapping shows a marker with the date and exact value(s).
+- Each card shows an empty state when its own series has nothing in the window.
 
 **Input validation**
 - Weight: greater than 0 and at most 1000 lbs.
@@ -144,6 +153,6 @@ Also:
 2. ✅ Food library + manual food logging + library search/edit/delete (schema v2)
 3. ✅ Barcode scanning
 4. ✅ Sleep logging with attribution and validation (schema v3)
-5. Remaining graphs + range selector
+5. ✅ Remaining graphs + range selector
 6. History calendar with view/edit/delete
 7. Export/import

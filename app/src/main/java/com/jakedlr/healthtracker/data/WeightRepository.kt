@@ -1,6 +1,7 @@
 package com.jakedlr.healthtracker.data
 
 import com.jakedlr.healthtracker.data.db.WeightDao
+import com.jakedlr.healthtracker.data.db.WeightDateRange
 import com.jakedlr.healthtracker.data.db.WeightEntry
 import java.time.LocalDate
 import kotlinx.coroutines.flow.Flow
@@ -9,6 +10,11 @@ class WeightRepository(private val dao: WeightDao) {
     fun observeWeight(date: LocalDate): Flow<WeightEntry?> = dao.observeByDate(date)
 
     fun observeAll(): Flow<List<WeightEntry>> = dao.observeAll()
+
+    fun observeBetween(dates: ClosedRange<LocalDate>): Flow<List<WeightEntry>> =
+        dao.observeBetween(dates.start, dates.endInclusive)
+
+    fun observeDateRange(): Flow<WeightDateRange> = dao.observeDateRange()
 
     suspend fun getWeight(date: LocalDate): WeightEntry? = dao.getByDate(date)
 
