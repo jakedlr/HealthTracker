@@ -2,8 +2,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- The app is fully offline. Strip INTERNET even if a library merges it in. -->
+    <uses-permission
+        android:name="android.permission.INTERNET"
+        tools:node="remove" />
+
     <application
-        android:allowBackup="true"
+        android:name=".HealthTrackerApplication"
+        android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
