@@ -7,15 +7,22 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 
 // Every schema change after v1 must ship a Migration; never use destructive fallback.
-@Database(entities = [WeightEntry::class], version = 1, exportSchema = true)
+@Database(
+    entities = [WeightEntry::class, FoodItem::class, FoodLog::class],
+    version = 2,
+    exportSchema = true,
+)
 @TypeConverters(Converters::class)
 abstract class HealthDatabase : RoomDatabase() {
     abstract fun weightDao(): WeightDao
+    abstract fun foodDao(): FoodDao
 
     companion object {
         const val NAME = "health.db"
 
         fun build(context: Context): HealthDatabase =
-            Room.databaseBuilder(context, HealthDatabase::class.java, NAME).build()
+            Room.databaseBuilder(context, HealthDatabase::class.java, NAME)
+                .addMigrations(*ALL_MIGRATIONS)
+                .build()
     }
 }

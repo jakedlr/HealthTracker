@@ -1,6 +1,7 @@
 package com.jakedlr.healthtracker
 
 import android.content.Context
+import com.jakedlr.healthtracker.data.FoodRepository
 import com.jakedlr.healthtracker.data.WeightRepository
 import com.jakedlr.healthtracker.data.db.HealthDatabase
 import java.time.Clock
@@ -11,4 +12,5 @@ class AppContainer(context: Context) {
 
     val clock: Clock = Clock.systemDefaultZone()
     val weightRepository = WeightRepository(database.weightDao())
+    val foodRepository = FoodRepository(database, database.foodDao())
 }

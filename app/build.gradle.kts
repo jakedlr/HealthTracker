@@ -69,4 +69,9 @@ dependencies {
     androidTestImplementation(libs.kotlinx.coroutines.test)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
+    constraints {
+        // Navigation brings serialization 1.7.3, but room-testing's MigrationTestHelper needs 1.8.1+
+        // and test classpaths are pinned to the app's versions. Version bump only, not a new library.
+        implementation(libs.kotlinx.serialization.core)
+    }
 }
