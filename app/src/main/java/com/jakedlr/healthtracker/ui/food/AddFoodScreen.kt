@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -23,6 +24,7 @@ import com.jakedlr.healthtracker.ui.BackButton
 fun AddFoodScreen(
     onBack: () -> Unit,
     onItemSelected: (itemId: Long) -> Unit,
+    onScan: () -> Unit,
     onEnterManually: () -> Unit,
     viewModel: FoodSearchViewModel = viewModel(factory = FoodSearchViewModel.Factory),
 ) {
@@ -39,7 +41,7 @@ fun AddFoodScreen(
                 .padding(horizontal = 16.dp),
             verticalArrangement = FoodScreenSpacing,
         ) {
-            // Barcode scanning joins this row in milestone 3.
+            Button(onClick = onScan, modifier = Modifier.fillMaxWidth()) { Text("Scan barcode") }
             OutlinedButton(onClick = onEnterManually, modifier = Modifier.fillMaxWidth()) {
                 Text("Enter manually")
             }

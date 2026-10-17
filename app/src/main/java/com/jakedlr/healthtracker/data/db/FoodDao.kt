@@ -34,6 +34,13 @@ interface FoodDao {
     @Query("SELECT * FROM food_item WHERE name = :name")
     suspend fun getItemByName(name: String): FoodItem?
 
+    @Query("SELECT * FROM food_item WHERE barcode = :barcode")
+    suspend fun getItemByBarcode(barcode: String): FoodItem?
+
+    /** Sets the barcode only if the item has none; returns the number of rows changed. */
+    @Query("UPDATE food_item SET barcode = :barcode WHERE id = :id AND barcode IS NULL")
+    suspend fun setBarcodeIfMissing(id: Long, barcode: String): Int
+
     /**
      * Items whose name contains [pattern] (a LIKE pattern escaped with '\'), most recently
      * logged first, then never-logged items alphabetically.

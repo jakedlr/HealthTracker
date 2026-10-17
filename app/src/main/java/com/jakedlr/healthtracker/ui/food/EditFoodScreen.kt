@@ -51,6 +51,9 @@ fun EditFoodScreen(
                 state.loading -> Unit
                 state.original == null -> Text("This item is no longer in your library.")
                 else -> {
+                    state.original?.barcode?.let {
+                        Text("Barcode $it", style = MaterialTheme.typography.bodyMedium)
+                    }
                     FoodNameField(state.name, viewModel::onNameChange, state.showErrors, state.nameTaken)
                     NutritionFields(state.nutrition, viewModel::onNutritionChange, state.showErrors)
                     Text(

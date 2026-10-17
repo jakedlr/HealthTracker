@@ -142,4 +142,37 @@ class FoodDaoTest {
         val logs = repository.observeLogsForDay(day, zone).first()
         assertEquals(listOf(startOfDay, startOfNext - 1), logs.map { it.eatenAt })
     }
+
+    @Test
+    fun findByBarcode_findsItem_unknownReturnsNull() = runTest {
+        val id = dao.insertItem(item("Cereal", barcode = "4006381333931"))
+        assertEquals(id, repository.findByBarcode("4006381333931")?.id)
+        assertNull(repository.findByBarcode("0036000291452"))
+    }
+
+    @Test
+    fun createItemAndLog_savesBarcode() = runTest {
+        val result = repository.createItemAndLog(item("Granola", barcode = "0036000291452"), 1.0, eatenAt = 0)
+        val id = (result as SaveItemResult.Saved).itemId
+        assertEquals("0036000291452", dao.getItem(id)!!.barcode)
+        assertEquals(id, repository.findByBarcode("0036000291452")?.id)
+    }
+
+    @Test
+    fun linkBarcode_onlyWhenItemHasNone_andBarcodeIsFree() = runTest {
+        val plain = dao.insertItem(item("Greek yogurt"))
+        val coded = dao.insertItem(item("Milk", barcode = "1111111111116"))
+
+        assertTrue(repository.linkBarcode(plain, "4006381333931"))
+        assertEquals("4006381333931", dao.getItem(plain)!!.barcode)
+
+        // Item already has a barcode: unchanged.
+        assertEquals(false, repository.linkBarcode(coded, "0036000291452"))
+        assertEquals("1111111111116", dao.getItem(coded)!!.barcode)
+
+        // Barcode already used by another item: not linked, no crash.
+        val other = dao.insertItem(item("Butter"))
+        assertEquals(false, repository.linkBarcode(other, "4006381333931"))
+        assertNull(dao.getItem(other)!!.barcode)
+    }
 }

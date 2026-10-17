@@ -13,8 +13,10 @@ import com.jakedlr.healthtracker.ui.food.FoodLibraryScreen
 import com.jakedlr.healthtracker.ui.food.LogFoodScreen
 import com.jakedlr.healthtracker.ui.food.LogFoodViewModel
 import com.jakedlr.healthtracker.ui.food.NewFoodScreen
+import com.jakedlr.healthtracker.ui.food.NewFoodViewModel
 import com.jakedlr.healthtracker.ui.graphs.GraphsScreen
 import com.jakedlr.healthtracker.ui.home.HomeScreen
+import com.jakedlr.healthtracker.ui.scan.ScanScreen
 import com.jakedlr.healthtracker.ui.weight.AddWeightScreen
 
 object Routes {
@@ -22,11 +24,14 @@ object Routes {
     const val ADD_WEIGHT = "addWeight"
     const val GRAPHS = "graphs"
     const val ADD_FOOD = "addFood"
-    const val NEW_FOOD = "newFood"
+    const val SCAN = "scan"
+    const val NEW_FOOD = "newFood?${NewFoodViewModel.BARCODE_ARG}={${NewFoodViewModel.BARCODE_ARG}}"
     const val LOG_FOOD = "logFood/{${LogFoodViewModel.ITEM_ID_ARG}}"
     const val FOOD_LIBRARY = "foodLibrary"
     const val EDIT_FOOD = "editFood/{${EditFoodViewModel.ITEM_ID_ARG}}"
 
+    fun newFood(barcode: String? = null) =
+        if (barcode == null) "newFood" else "newFood?${NewFoodViewModel.BARCODE_ARG}=$barcode"
     fun logFood(itemId: Long) = "logFood/$itemId"
     fun editFood(itemId: Long) = "editFood/$itemId"
 }
@@ -55,10 +60,32 @@ fun HealthTrackerNavHost() {
             AddFoodScreen(
                 onBack = backToHome,
                 onItemSelected = { navController.navigate(Routes.logFood(it)) },
-                onEnterManually = { navController.navigate(Routes.NEW_FOOD) },
+                onScan = { navController.navigate(Routes.SCAN) },
+                onEnterManually = { navController.navigate(Routes.newFood()) },
             )
         }
-        composable(Routes.NEW_FOOD) {
+        composable(Routes.SCAN) {
+            // Each outcome replaces the scanner, so Back from the next screen returns to Add food.
+            val replaceScan: (String) -> Unit = { route ->
+                navController.navigate(route) { popUpTo(Routes.SCAN) { inclusive = true } }
+            }
+            ScanScreen(
+                onBack = { navController.popBackStack() },
+                onKnownItem = { replaceScan(Routes.logFood(it)) },
+                onUnknownBarcode = { replaceScan(Routes.newFood(it)) },
+                onEnterManually = { replaceScan(Routes.newFood()) },
+            )
+        }
+        composable(
+            Routes.NEW_FOOD,
+            arguments = listOf(
+                navArgument(NewFoodViewModel.BARCODE_ARG) {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+            ),
+        ) {
             NewFoodScreen(
                 onBack = { navController.popBackStack() },
                 onDone = backToHome,

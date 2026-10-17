@@ -27,6 +27,19 @@ class FoodRepository(
 
     suspend fun getItem(id: Long): FoodItem? = dao.getItem(id)
 
+    /** [barcode] must already be normalized (see normalizeBarcode). */
+    suspend fun findByBarcode(barcode: String): FoodItem? = dao.getItemByBarcode(barcode)
+
+    /**
+     * Attaches [barcode] to the item if it has none and no other item uses it.
+     * Returns true if the barcode was linked.
+     */
+    suspend fun linkBarcode(itemId: Long, barcode: String): Boolean =
+        database.withTransaction {
+            if (dao.getItemByBarcode(barcode) != null) return@withTransaction false
+            dao.setBarcodeIfMissing(itemId, barcode) == 1
+        }
+
     /** Logs [servings] of [item], snapshotting its current nutrition. */
     suspend fun logFood(item: FoodItem, servings: Double, eatenAt: Long) {
         dao.insertLog(FoodLog.snapshotOf(item, servings, eatenAt))

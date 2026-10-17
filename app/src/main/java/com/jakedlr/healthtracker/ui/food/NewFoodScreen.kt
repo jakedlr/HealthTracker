@@ -9,6 +9,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -42,6 +43,9 @@ fun NewFoodScreen(
     LaunchedEffect(state.saved) {
         if (state.saved) onDone()
     }
+    LaunchedEffect(state.useExistingItemId) {
+        state.useExistingItemId?.let(onUseExisting)
+    }
 
     Scaffold(
         topBar = { TopAppBar(title = { Text("New food") }, navigationIcon = { BackButton(onBack) }) },
@@ -54,13 +58,18 @@ fun NewFoodScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = FoodScreenSpacing,
         ) {
+            state.barcode?.let {
+                Text("Barcode $it", style = MaterialTheme.typography.bodyMedium)
+            }
             FoodNameField(
                 name = state.name,
                 onNameChange = viewModel::onNameChange,
                 showErrors = state.showErrors,
                 nameTaken = state.nameTaken,
-                takenAction = { existing ->
-                    TextButton(onClick = { onUseExisting(existing.id) }) { Text("Use existing") }
+                takenAction = {
+                    TextButton(onClick = viewModel::useExisting) {
+                        Text(if (state.canLinkBarcode) "Use existing and link barcode" else "Use existing")
+                    }
                 },
             )
             NutritionFields(state.nutrition, viewModel::onNutritionChange, state.showErrors)

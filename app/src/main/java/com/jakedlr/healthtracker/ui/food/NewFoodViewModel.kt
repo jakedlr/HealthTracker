@@ -1,7 +1,9 @@
 package com.jakedlr.healthtracker.ui.food
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
@@ -22,6 +24,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class NewFoodUiState(
+    /** Scanned barcode (normalized) to save with the new item, if this came from a scan. */
+    val barcode: String? = null,
     val name: String = "",
     val nutrition: NutritionInput = NutritionInput(),
     val servingsText: String = "1",
@@ -31,16 +35,26 @@ data class NewFoodUiState(
     /** Set when the name matches an existing library item (ignoring case). */
     val nameTaken: FoodItem? = null,
     val saved: Boolean = false,
-)
+    /** Set when the user chose to log an existing item instead; navigate to it. */
+    val useExistingItemId: Long? = null,
+) {
+    /** Whether "Use existing" will also attach the scanned barcode to the existing item. */
+    val canLinkBarcode: Boolean get() = barcode != null && nameTaken != null && nameTaken.barcode == null
+}
 
-/** Manual entry: always creates a new library item and logs it. */
+/** Manual entry (or unknown scanned barcode): always creates a new library item and logs it. */
 class NewFoodViewModel(
+    savedStateHandle: SavedStateHandle,
     private val repository: FoodRepository,
     private val clock: Clock,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(
         LocalDateTime.now(clock).truncatedTo(ChronoUnit.MINUTES).let {
-            NewFoodUiState(eatenAt = it, today = it.toLocalDate())
+            NewFoodUiState(
+                barcode = savedStateHandle.get<String>(BARCODE_ARG),
+                eatenAt = it,
+                today = it.toLocalDate(),
+            )
         },
     )
     val uiState: StateFlow<NewFoodUiState> = _uiState.asStateFlow()
@@ -65,6 +79,7 @@ class NewFoodViewModel(
         viewModelScope.launch {
             val item = FoodItem(
                 name = name,
+                barcode = state.barcode,
                 caloriesKcal = nutrition.caloriesKcal,
                 proteinG = nutrition.proteinG,
                 carbsG = nutrition.carbsG,
@@ -79,11 +94,23 @@ class NewFoodViewModel(
         }
     }
 
+    /** Log the existing item with the clashing name instead, linking the scanned barcode if possible. */
+    fun useExisting() {
+        val state = _uiState.value
+        val existing = state.nameTaken ?: return
+        viewModelScope.launch {
+            if (state.canLinkBarcode) repository.linkBarcode(existing.id, state.barcode!!)
+            _uiState.update { it.copy(useExistingItemId = existing.id) }
+        }
+    }
+
     companion object {
+        const val BARCODE_ARG = "barcode"
+
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val container = appContainer()
-                NewFoodViewModel(container.foodRepository, container.clock)
+                NewFoodViewModel(createSavedStateHandle(), container.foodRepository, container.clock)
             }
         }
     }
