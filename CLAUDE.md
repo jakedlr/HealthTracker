@@ -67,8 +67,8 @@ Editing a food_item must **never** change existing food_log rows; only future lo
 
 **sleep_entry**
 - `id` (Long, primary key)
-- `start_at`, `end_at` (epoch millis), entered together in one form; never default to "now"
-- Validation: `end_at > start_at`. Reject entries that overlap an existing sleep entry.
+- `start_at`, `end_at` (epoch millis, `start_at` indexed), entered together in one form; never default to "now"
+- Validation: `end_at > start_at`, and duration at most 24 hours (exactly 24 h is allowed). Reject entries that overlap an existing sleep entry. Entries that only touch (one ends exactly when the next starts) do **not** overlap and are allowed. Wake times in the future are allowed.
 - The day a sleep counts toward is **derived, never stored** (see below).
 
 ## Domain rules
@@ -77,6 +77,8 @@ Editing a food_item must **never** change existing food_log rows; only future lo
 - Bed 11PM 10/08, wake 7AM 10/09 → 10/08
 - Bed 1AM 10/09 → 10/08
 - Nap at 2PM 10/09 → 10/09 (accepted simplification)
+- Starting exactly at noon counts toward that day; 11:59 AM counts toward the previous day. A sleep spanning noon counts by its start.
+- The 12 hours come off the **local clock time** (not the instant), so the noon cutoff stays at exactly noon on daylight-saving days.
 - Daily sleep = sum of durations of all entries assigned to that date.
 
 **Daily aggregation:** calories and each macro are summed per local day; sleep is total hours per assigned day; weight is the single value for that day. **Days with no data are gaps, never zeros**, on every graph.
@@ -84,6 +86,7 @@ Editing a food_item must **never** change existing food_log rows; only future lo
 **Graph range** (shared by all four graphs). Ranges: last week, last month, last 3 months, all time.
 - `firstAny` = earliest first measurement across weight, food, and sleep
 - `lastAny` = latest last measurement across weight, food, and sleep
+- Each measurement contributes its date: weight its `date`, food the local date of `eaten_at`, sleep its **assigned** date.
 - Start = max(`firstAny`, today − range) (for "all time," Start = `firstAny`)
 - End = min(today, `lastAny`)
 - "today − range" is taken literally: `minusWeeks(1)`, `minusMonths(1)`, `minusMonths(3)`, so "last week" spans 8 calendar days counting today. If start > end (all data older than the range), there's nothing to plot.
@@ -92,11 +95,11 @@ Editing a food_item must **never** change existing food_log rows; only future lo
 **Input validation**
 - Weight: greater than 0 and at most 1000 lbs.
 - Servings: greater than 0, fractions allowed. Nutrients: 0 or more, all five required. Decimal commas are accepted.
-- Date pickers block future dates.
+- Date pickers block future dates, except the sleep **Woke up** date.
 
 ## Screens
 
-- **Home:** today's weight, calories, and macros; previous day's sleep (i.e. last night, per the attribution rule). Buttons to every screen below.
+- **Home:** today's weight, calories, and macros; previous day's sleep (i.e. last night, per the attribution rule: total sleep assigned to yesterday, shown as "7 h 45 m" or "No sleep logged"). Buttons to every screen below.
 - **Add food:** scan barcode, search library, or enter manually. Choose servings; date/time defaults to now but is editable.
   - Search results: most recently logged first, then never-logged items alphabetically.
   - Known barcode → Log food for that item. Unknown barcode → New food with the barcode attached, saved to the library with the barcode.
@@ -104,7 +107,10 @@ Editing a food_item must **never** change existing food_log rows; only future lo
   - Scanning handles only EAN-13, EAN-8, UPC-A, and UPC-E; the first read wins. If camera permission is denied, the screen explains why it's needed and offers Allow camera (or Open settings) and Enter manually.
 - **Food library:** search by name; edit an item's name and nutrition (future logs only); delete an item (with confirmation; past logs keep their values). Shows the barcode if the item has one.
 - **Add weight:** date defaults to today, editable (no future dates). If the date already has a weight, the field is pre-filled and the screen says saving will replace it.
-- **Add sleep:** start and end date/time pickers.
+- **Add sleep:** **Fell asleep** and **Woke up** rows, each with date and time buttons.
+  - All four start empty ("Select date"/"Select time"); saving is blocked until all are chosen. Pickers only *open* at a suggestion (Fell asleep: yesterday 11 PM; Woke up: chosen sleep time + 8 h).
+  - Once both are set, a preview shows the duration and the date it counts toward.
+  - Errors show inline: wake not after sleep, longer than 24 h, or an overlap naming the conflicting entry's times.
 - **Graphs:** weight, calories, macros (protein/carbs/fat/fiber on one chart), sleep; range selector.
 - **History:** month calendar, swipe between months; tap a day to view and edit/delete that day's weight, food logs, and sleep.
 - **Settings/Data:** export and import (see below).
@@ -119,7 +125,7 @@ Editing a food_item must **never** change existing food_log rows; only future lo
 Unit tests are required for: sleep attribution (including crossing midnight and crossing noon), overlap detection, daily aggregation with missing days, graph range bounds, and snapshot math (editing an item doesn't change past totals). Add a Room DAO test for the weight upsert.
 
 Also:
-- Every schema migration gets a `MigrationTestHelper` test (in `androidTest/.../MigrationTest.kt`).
+- Every schema migration gets a `MigrationTestHelper` test (in `androidTest/.../MigrationTest.kt`). The driver-based helper doesn't clean up between tests, so `MigrationTest` deletes its database file in `@Before`.
 - Instrumented tests (DAO, repository, migration, real ML Kit scan) run on the Pixel 8a via `./gradlew connectedDebugAndroidTest`.
 - Features that need a camera or a real product are checked by hand on the phone before the milestone is committed.
 
@@ -137,7 +143,7 @@ Also:
 1. ✅ Project setup, Room database, weight logging, Home screen showing today's weight, weight graph
 2. ✅ Food library + manual food logging + library search/edit/delete (schema v2)
 3. ✅ Barcode scanning
-4. Sleep logging with attribution and validation
+4. ✅ Sleep logging with attribution and validation (schema v3)
 5. Remaining graphs + range selector
 6. History calendar with view/edit/delete
 7. Export/import

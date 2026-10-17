@@ -69,6 +69,58 @@ fun DateTimeField(
     }
 }
 
+/**
+ * Date and time buttons that start empty ("Select date"/"Select time") and stay empty until
+ * the user confirms a value. Pickers open at [suggestedDate]/[suggestedTime] when nothing is set.
+ */
+@Composable
+fun OptionalDateTimeField(
+    date: LocalDate?,
+    time: LocalTime?,
+    suggestedDate: LocalDate,
+    suggestedTime: LocalTime,
+    today: LocalDate,
+    allowFutureDates: Boolean,
+    onDateChange: (LocalDate) -> Unit,
+    onTimeChange: (LocalTime) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var showDate by rememberSaveable { mutableStateOf(false) }
+    var showTime by rememberSaveable { mutableStateOf(false) }
+
+    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedButton(onClick = { showDate = true }, modifier = Modifier.weight(1f)) {
+            Text(date?.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)) ?: "Select date")
+        }
+        OutlinedButton(onClick = { showTime = true }, modifier = Modifier.weight(1f)) {
+            Text(time?.format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)) ?: "Select time")
+        }
+    }
+
+    if (showDate) {
+        PastDatePickerDialog(
+            selected = date ?: suggestedDate,
+            today = today,
+            allowFuture = allowFutureDates,
+            onConfirm = {
+                onDateChange(it)
+                showDate = false
+            },
+            onDismiss = { showDate = false },
+        )
+    }
+    if (showTime) {
+        TimePickerDialog(
+            initial = time ?: suggestedTime,
+            onConfirm = {
+                onTimeChange(it)
+                showTime = false
+            },
+            onDismiss = { showTime = false },
+        )
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TimePickerDialog(

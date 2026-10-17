@@ -7,11 +7,13 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.jakedlr.healthtracker.appContainer
 import com.jakedlr.healthtracker.data.FoodRepository
+import com.jakedlr.healthtracker.data.SleepRepository
 import com.jakedlr.healthtracker.data.WeightRepository
 import com.jakedlr.healthtracker.domain.DailyValue
 import com.jakedlr.healthtracker.domain.GraphRange
 import com.jakedlr.healthtracker.domain.graphBounds
 import com.jakedlr.healthtracker.domain.pointsInRange
+import com.jakedlr.healthtracker.domain.sleepDate
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
@@ -30,6 +32,7 @@ data class GraphsUiState(
 class GraphsViewModel(
     weightRepository: WeightRepository,
     foodRepository: FoodRepository,
+    sleepRepository: SleepRepository,
     private val clock: Clock,
 ) : ViewModel() {
     // The range selector arrives in milestone 5; until then always show everything.
@@ -38,16 +41,20 @@ class GraphsViewModel(
     val uiState: StateFlow<GraphsUiState> = combine(
         weightRepository.observeAll(),
         foodRepository.observeEatenAtRange(),
-    ) { entries, eatenAt ->
+        sleepRepository.observeStartAtRange(),
+    ) { entries, eatenAt, sleepStarts ->
         val weight = entries.map { DailyValue(it.date, it.weightLbs) }
         val foodFirst = eatenAt.first?.toLocalDate()
         val foodLast = eatenAt.last?.toLocalDate()
-        // Sleep joins firstAny/lastAny in milestone 4.
+        // Sleep counts on its assigned date. sleepDate() never decreases as start time grows,
+        // so the earliest and latest starts give the earliest and latest assigned dates.
+        val sleepFirst = sleepStarts.first?.let { sleepDate(it, clock.zone) }
+        val sleepLast = sleepStarts.last?.let { sleepDate(it, clock.zone) }
         val bounds = graphBounds(
             range = range,
             today = LocalDate.now(clock),
-            firstAny = listOfNotNull(weight.minOfOrNull { it.date }, foodFirst).minOrNull(),
-            lastAny = listOfNotNull(weight.maxOfOrNull { it.date }, foodLast).maxOrNull(),
+            firstAny = listOfNotNull(weight.minOfOrNull { it.date }, foodFirst, sleepFirst).minOrNull(),
+            lastAny = listOfNotNull(weight.maxOfOrNull { it.date }, foodLast, sleepLast).maxOrNull(),
         )
         GraphsUiState(
             loading = false,
@@ -63,7 +70,12 @@ class GraphsViewModel(
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val container = appContainer()
-                GraphsViewModel(container.weightRepository, container.foodRepository, container.clock)
+                GraphsViewModel(
+                    container.weightRepository,
+                    container.foodRepository,
+                    container.sleepRepository,
+                    container.clock,
+                )
             }
         }
     }

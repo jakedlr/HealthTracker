@@ -14,7 +14,7 @@ import java.time.LocalDate
 import java.time.ZoneOffset
 
 /**
- * Date picker that blocks dates after [today].
+ * Date picker that blocks dates after [today] unless [allowFuture] is set.
  * Material's DatePicker works in UTC-midnight millis, so convert with UTC on both sides.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -24,12 +24,13 @@ fun PastDatePickerDialog(
     today: LocalDate,
     onConfirm: (LocalDate) -> Unit,
     onDismiss: () -> Unit,
+    allowFuture: Boolean = false,
 ) {
     val todayMillis = today.toUtcMillis()
-    val selectableDates = remember(todayMillis) {
+    val selectableDates = remember(todayMillis, allowFuture) {
         object : SelectableDates {
-            override fun isSelectableDate(utcTimeMillis: Long) = utcTimeMillis <= todayMillis
-            override fun isSelectableYear(year: Int) = year <= today.year
+            override fun isSelectableDate(utcTimeMillis: Long) = allowFuture || utcTimeMillis <= todayMillis
+            override fun isSelectableYear(year: Int) = allowFuture || year <= today.year
         }
     }
     val pickerState = rememberDatePickerState(

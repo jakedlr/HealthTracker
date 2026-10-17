@@ -29,4 +29,15 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
     }
 }
 
-val ALL_MIGRATIONS = arrayOf(MIGRATION_1_2)
+/** v3: sleep entries. */
+val MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            "CREATE TABLE IF NOT EXISTS `sleep_entry` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`start_at` INTEGER NOT NULL, `end_at` INTEGER NOT NULL)",
+        )
+        connection.execSQL("CREATE INDEX IF NOT EXISTS `index_sleep_entry_start_at` ON `sleep_entry` (`start_at`)")
+    }
+}
+
+val ALL_MIGRATIONS = arrayOf(MIGRATION_1_2, MIGRATION_2_3)

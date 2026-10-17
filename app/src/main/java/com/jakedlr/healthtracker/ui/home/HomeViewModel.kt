@@ -7,6 +7,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.jakedlr.healthtracker.appContainer
 import com.jakedlr.healthtracker.data.FoodRepository
+import com.jakedlr.healthtracker.data.SleepRepository
 import com.jakedlr.healthtracker.data.WeightRepository
 import com.jakedlr.healthtracker.domain.Nutrition
 import com.jakedlr.healthtracker.domain.dailyNutrition
@@ -25,12 +26,15 @@ data class HomeUiState(
     val todayWeightLbs: Double? = null,
     /** Null when nothing has been logged today. */
     val todayNutrition: Nutrition? = null,
+    /** Total sleep assigned to yesterday (i.e. last night); null when none. */
+    val lastNightSleepMillis: Long? = null,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class HomeViewModel(
     private val weightRepository: WeightRepository,
     private val foodRepository: FoodRepository,
+    private val sleepRepository: SleepRepository,
     private val clock: Clock,
 ) : ViewModel() {
     private val today = MutableStateFlow(LocalDate.now(clock))
@@ -40,11 +44,13 @@ class HomeViewModel(
             combine(
                 weightRepository.observeWeight(date),
                 foodRepository.observeLogsForDay(date, clock.zone),
-            ) { weight, logs ->
+                sleepRepository.observeSleepForDate(date.minusDays(1), clock.zone),
+            ) { weight, logs, sleep ->
                 HomeUiState(
                     today = date,
                     todayWeightLbs = weight?.weightLbs,
                     todayNutrition = dailyNutrition(logs.map { it.toLoggedFood() }, clock.zone)[date],
+                    lastNightSleepMillis = sleep.takeIf { it.isNotEmpty() }?.sumOf { it.endAt - it.startAt },
                 )
             }
         }
@@ -59,7 +65,12 @@ class HomeViewModel(
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val container = appContainer()
-                HomeViewModel(container.weightRepository, container.foodRepository, container.clock)
+                HomeViewModel(
+                    container.weightRepository,
+                    container.foodRepository,
+                    container.sleepRepository,
+                    container.clock,
+                )
             }
         }
     }

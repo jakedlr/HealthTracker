@@ -17,6 +17,7 @@ import com.jakedlr.healthtracker.ui.food.NewFoodViewModel
 import com.jakedlr.healthtracker.ui.graphs.GraphsScreen
 import com.jakedlr.healthtracker.ui.home.HomeScreen
 import com.jakedlr.healthtracker.ui.scan.ScanScreen
+import com.jakedlr.healthtracker.ui.sleep.AddSleepScreen
 import com.jakedlr.healthtracker.ui.weight.AddWeightScreen
 
 object Routes {
@@ -24,6 +25,7 @@ object Routes {
     const val ADD_WEIGHT = "addWeight"
     const val GRAPHS = "graphs"
     const val ADD_FOOD = "addFood"
+    const val ADD_SLEEP = "addSleep"
     const val SCAN = "scan"
     const val NEW_FOOD = "newFood?${NewFoodViewModel.BARCODE_ARG}={${NewFoodViewModel.BARCODE_ARG}}"
     const val LOG_FOOD = "logFood/{${LogFoodViewModel.ITEM_ID_ARG}}"
@@ -46,12 +48,16 @@ fun HealthTrackerNavHost() {
             HomeScreen(
                 onAddWeight = { navController.navigate(Routes.ADD_WEIGHT) },
                 onAddFood = { navController.navigate(Routes.ADD_FOOD) },
+                onAddSleep = { navController.navigate(Routes.ADD_SLEEP) },
                 onOpenFoodLibrary = { navController.navigate(Routes.FOOD_LIBRARY) },
                 onOpenGraphs = { navController.navigate(Routes.GRAPHS) },
             )
         }
         composable(Routes.ADD_WEIGHT) {
             AddWeightScreen(onDone = backToHome)
+        }
+        composable(Routes.ADD_SLEEP) {
+            AddSleepScreen(onDone = backToHome)
         }
         composable(Routes.GRAPHS) {
             GraphsScreen(onBack = backToHome)

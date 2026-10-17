@@ -24,6 +24,7 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jakedlr.healthtracker.domain.Nutrition
+import com.jakedlr.healthtracker.ui.formatDuration
 import com.jakedlr.healthtracker.ui.formatGrams
 import com.jakedlr.healthtracker.ui.formatKcal
 import com.jakedlr.healthtracker.ui.formatLbs
@@ -36,6 +37,7 @@ import java.time.format.FormatStyle
 fun HomeScreen(
     onAddWeight: () -> Unit,
     onAddFood: () -> Unit,
+    onAddSleep: () -> Unit,
     onOpenFoodLibrary: () -> Unit,
     onOpenGraphs: () -> Unit,
     viewModel: HomeViewModel = viewModel(factory = HomeViewModel.Factory),
@@ -45,7 +47,7 @@ fun HomeScreen(
         viewModel.refreshToday()
         onPauseOrDispose { }
     }
-    HomeContent(state, onAddWeight, onAddFood, onOpenFoodLibrary, onOpenGraphs)
+    HomeContent(state, onAddWeight, onAddFood, onAddSleep, onOpenFoodLibrary, onOpenGraphs)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -54,6 +56,7 @@ private fun HomeContent(
     state: HomeUiState,
     onAddWeight: () -> Unit,
     onAddFood: () -> Unit,
+    onAddSleep: () -> Unit,
     onOpenFoodLibrary: () -> Unit,
     onOpenGraphs: () -> Unit,
 ) {
@@ -95,8 +98,18 @@ private fun HomeContent(
                     }
                 }
             }
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp)) {
+                    Text("Last night", style = MaterialTheme.typography.labelLarge)
+                    Text(
+                        state.lastNightSleepMillis?.let(::formatDuration) ?: "No sleep logged",
+                        style = MaterialTheme.typography.headlineMedium,
+                    )
+                }
+            }
             Button(onClick = onAddWeight, modifier = Modifier.fillMaxWidth()) { Text("Add weight") }
             Button(onClick = onAddFood, modifier = Modifier.fillMaxWidth()) { Text("Add food") }
+            Button(onClick = onAddSleep, modifier = Modifier.fillMaxWidth()) { Text("Add sleep") }
             OutlinedButton(onClick = onOpenFoodLibrary, modifier = Modifier.fillMaxWidth()) { Text("Food library") }
             OutlinedButton(onClick = onOpenGraphs, modifier = Modifier.fillMaxWidth()) { Text("Graphs") }
         }
@@ -108,8 +121,11 @@ private fun HomeContent(
 private fun HomePreview() {
     HealthTrackerTheme {
         HomeContent(
-            HomeUiState(LocalDate.of(2026, 10, 16), 182.4, Nutrition(1840.0, 120.5, 190.0, 28.0, 60.2)),
-            {}, {}, {}, {},
+            HomeUiState(
+                LocalDate.of(2026, 10, 16), 182.4, Nutrition(1840.0, 120.5, 190.0, 28.0, 60.2),
+                lastNightSleepMillis = 27_900_000,
+            ),
+            {}, {}, {}, {}, {},
         )
     }
 }
