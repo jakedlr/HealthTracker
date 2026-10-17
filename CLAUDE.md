@@ -167,6 +167,8 @@ Also:
 - Keep the existing project structure and naming; don't reorganize files unless asked.
 - Run the tests and a build before calling a milestone done.
 - **Keep this file current.** Whenever an approved plan, a user decision, or a fix during implementation changes or adds to what's written here, update CLAUDE.md in the same milestone.
+- **Keep README.md current at a high level.** Update it when a user-visible feature or the tech stack changes (e.g. a new screen, supporting kg as well as lbs, a new library). Don't add bug fixes, refactors, or internal details. Keep the Claude Code disclaimer.
+- Commit or push only when the user asks; if they want to run git themselves, give them the commands instead.
 - Commit each milestone as its own commit once its tests pass (and any manual checks are confirmed).
 - Edit files with UTF-8 tooling. On Windows, Python's `open()` defaults to cp1252; always pass `encoding="utf-8"`.
 
