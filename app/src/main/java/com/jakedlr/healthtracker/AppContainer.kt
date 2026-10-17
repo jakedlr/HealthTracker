@@ -8,9 +8,12 @@ import com.jakedlr.healthtracker.data.WeightRepository
 import com.jakedlr.healthtracker.data.db.HealthDatabase
 import java.time.Clock
 
-/** Manual dependency wiring; one instance lives on [HealthTrackerApplication]. */
+/**
+ * Manual dependency wiring; one instance lives on [HealthTrackerApplication].
+ * Replaced wholesale after an import, so nothing outside it should keep repository references.
+ */
 class AppContainer(context: Context) {
-    private val database = HealthDatabase.build(context)
+    val database = HealthDatabase.build(context)
 
     val clock: Clock = Clock.systemDefaultZone()
     val weightRepository = WeightRepository(database.weightDao())

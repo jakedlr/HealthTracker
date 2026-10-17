@@ -10,6 +10,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.jakedlr.healthtracker.ui.DATE_ARG
 import com.jakedlr.healthtracker.ui.NO_DATE
+import com.jakedlr.healthtracker.ui.data.DataScreen
 import com.jakedlr.healthtracker.ui.food.AddFoodScreen
 import com.jakedlr.healthtracker.ui.food.EditFoodLogScreen
 import com.jakedlr.healthtracker.ui.food.EditFoodLogViewModel
@@ -44,6 +45,7 @@ object Routes {
     const val HOME = "home"
     const val GRAPHS = "graphs"
     const val HISTORY = "history"
+    const val DATA = "data"
     const val DAY = "day/{${DayViewModel.DAY_ARG}}"
     const val ADD_WEIGHT = "addWeight?$DATE_Q"
     const val SLEEP_FORM = "sleep?$SLEEP_ID={$SLEEP_ID}&$DATE_Q"
@@ -99,6 +101,7 @@ fun HealthTrackerNavHost() {
                 onOpenFoodLibrary = { navController.navigate(Routes.FOOD_LIBRARY) },
                 onOpenGraphs = { navController.navigate(Routes.GRAPHS) },
                 onOpenHistory = { navController.navigate(Routes.HISTORY) },
+                onOpenData = { navController.navigate(Routes.DATA) },
             )
         }
         composable(Routes.ADD_WEIGHT, arguments = listOf(dateArgument)) {
@@ -109,6 +112,9 @@ fun HealthTrackerNavHost() {
             arguments = listOf(longArgument(AddSleepViewModel.SLEEP_ID_ARG, AddSleepViewModel.NO_SLEEP_ID), dateArgument),
         ) {
             AddSleepScreen(onDone = back)
+        }
+        composable(Routes.DATA) {
+            DataScreen(onBack = back)
         }
         composable(Routes.GRAPHS) {
             GraphsScreen(onBack = backToHome)

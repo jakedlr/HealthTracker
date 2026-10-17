@@ -133,11 +133,23 @@ Editing a food_item must **never** change existing food_log rows; only future lo
   - Editing a time can move an entry to another day; it then disappears from this Day screen.
   - Weight edits keep the date locked; to move a weigh-in, delete it and add it on the right day.
 - **Navigation:** add flows take an optional `date` argument (epoch day, `-1` = none). When a flow finishes, it returns to whoever started it (Home or a Day screen).
-- **Settings/Data:** export and import (see below).
+- **Data** (button on Home): shows what's on the phone (counts and date span); **Export data** and **Import data** (see Data safety).
+
+**Theme / dark mode**
+- The window theme follows the system: `values/themes.xml` is light, `values-night/themes.xml` is dark (`android:Theme.Material.NoActionBar`).
+- `MainActivity` wraps the nav host in a `Surface` painted with `colorScheme.background`, so screen transitions fade over the app background. Without both, a light frame flashes between screens in dark mode.
 
 ## Data safety
 
-- Export/import a copy of the database via the Storage Access Framework (user picks the location, e.g. Downloads; no storage permissions). Checkpoint the WAL before copying. Import replaces current data after a confirmation dialog.
+- Export/import a copy of the database via the Storage Access Framework (user picks the location, e.g. Downloads; no storage permissions). Import replaces current data after a confirmation dialog.
+- **Export** takes its snapshot with `VACUUM INTO` (a complete, consistent copy that includes the WAL, so writes during export can't produce a torn file), then copies that snapshot to the user's chosen location. Suggested name: `health-tracker-YYYY-MM-DD.db`.
+- **Import:**
+  - Copies the picked file to app-private cache, then checks it before anything changes: the SQLite header, schema version between 1 and the current version (newer files are rejected), required tables for that version, and `PRAGMA integrity_check`.
+  - The confirmation dialog compares the file's counts and date span with the phone's.
+  - On Replace: a `VACUUM INTO` copy of the current data is saved to app-private files (`*.pre-import-backup`, overwritten by the next import, never exported); the database is closed, the file swapped in (stale `-wal`/`-shm` removed), and reopened, running migrations for older files.
+  - If opening or migrating fails, the pre-import copy is restored automatically and nothing is lost.
+  - After a successful import, `HealthTrackerApplication` builds a new `AppContainer` and the activity stack restarts (same process), so every screen reads the new database.
+  - Code: `data/BackupRepository.kt` (works against any `DatabaseHolder` and database name, so tests use their own files); `ui/data/DataScreen.kt`.
 - Schema version starts at 1. Every later schema change ships a Room `Migration`. **Never** use `fallbackToDestructiveMigration`. Export schemas (`room.schemaLocation`) and commit them.
 
 ## Testing
@@ -166,4 +178,4 @@ Also:
 4. ✅ Sleep logging with attribution and validation (schema v3)
 5. ✅ Remaining graphs + range selector
 6. ✅ History calendar with view/edit/delete
-7. Export/import
+7. ✅ Export/import (plus dark-mode transition flash fix)
