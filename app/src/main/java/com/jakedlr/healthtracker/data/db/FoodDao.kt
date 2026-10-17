@@ -63,6 +63,13 @@ interface FoodDao {
     @Query("SELECT * FROM food_log WHERE id = :id")
     suspend fun getLog(id: Long): FoodLog?
 
+    /** Changes only servings and time; the nutrition snapshot is never touched. */
+    @Query("UPDATE food_log SET servings = :servings, eaten_at = :eatenAt WHERE id = :id")
+    suspend fun updateLogServingsAndTime(id: Long, servings: Double, eatenAt: Long)
+
+    @Query("DELETE FROM food_log WHERE id = :id")
+    suspend fun deleteLog(id: Long)
+
     /** Logs with start <= eaten_at < end. */
     @Query("SELECT * FROM food_log WHERE eaten_at >= :start AND eaten_at < :end ORDER BY eaten_at")
     fun observeLogsBetween(start: Long, end: Long): Flow<List<FoodLog>>

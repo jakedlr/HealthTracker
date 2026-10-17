@@ -40,6 +40,14 @@ class FoodRepository(
             dao.setBarcodeIfMissing(itemId, barcode) == 1
         }
 
+    suspend fun getLog(id: Long): FoodLog? = dao.getLog(id)
+
+    /** Edits a past log. Totals recalculate from the log's own snapshot, never the library item. */
+    suspend fun updateLog(id: Long, servings: Double, eatenAt: Long) =
+        dao.updateLogServingsAndTime(id, servings, eatenAt)
+
+    suspend fun deleteLog(id: Long) = dao.deleteLog(id)
+
     /** Logs [servings] of [item], snapshotting its current nutrition. */
     suspend fun logFood(item: FoodItem, servings: Double, eatenAt: Long) {
         dao.insertLog(FoodLog.snapshotOf(item, servings, eatenAt))

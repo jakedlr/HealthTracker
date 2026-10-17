@@ -68,7 +68,7 @@ private fun AddWeightContent(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Add weight") },
+                title = { Text(if (state.dateLocked && state.existingWeightLbs != null) "Edit weight" else "Add weight") },
                 navigationIcon = { BackButton(onBack) },
             )
         },
@@ -80,7 +80,11 @@ private fun AddWeightContent(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            OutlinedButton(onClick = { showDatePicker = true }, modifier = Modifier.fillMaxWidth()) {
+            OutlinedButton(
+                onClick = { showDatePicker = true },
+                enabled = !state.dateLocked,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
                 val label = state.date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM))
                 Text(if (state.date == state.today) "Today, $label" else label)
             }

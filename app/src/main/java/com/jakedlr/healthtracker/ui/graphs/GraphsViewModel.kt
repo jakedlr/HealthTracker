@@ -10,14 +10,13 @@ import com.jakedlr.healthtracker.data.FoodRepository
 import com.jakedlr.healthtracker.data.GraphPreferences
 import com.jakedlr.healthtracker.data.SleepRepository
 import com.jakedlr.healthtracker.data.WeightRepository
+import com.jakedlr.healthtracker.data.observeDataSpan
 import com.jakedlr.healthtracker.domain.DailyValue
 import com.jakedlr.healthtracker.domain.GraphRange
 import com.jakedlr.healthtracker.domain.GraphSeries
 import com.jakedlr.healthtracker.domain.buildGraphSeries
 import com.jakedlr.healthtracker.domain.graphBounds
-import com.jakedlr.healthtracker.domain.sleepDate
 import java.time.Clock
-import java.time.Instant
 import java.time.LocalDate
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -47,29 +46,10 @@ class GraphsViewModel(
 ) : ViewModel() {
     private val range = MutableStateFlow(preferences.range)
 
-    /** firstAny/lastAny across weight, food (local date), and sleep (assigned date). */
-    private val dataSpan = combine(
-        weightRepository.observeDateRange(),
-        foodRepository.observeEatenAtRange(),
-        sleepRepository.observeStartAtRange(),
-    ) { weight, eatenAt, sleepStarts ->
-        // sleepDate() never decreases as start time grows, so the earliest and latest starts
-        // give the earliest and latest assigned dates.
-        val firsts = listOfNotNull(
-            weight.first,
-            eatenAt.first?.toLocalDate(),
-            sleepStarts.first?.let { sleepDate(it, clock.zone) },
-        )
-        val lasts = listOfNotNull(
-            weight.last,
-            eatenAt.last?.toLocalDate(),
-            sleepStarts.last?.let { sleepDate(it, clock.zone) },
-        )
-        firsts.minOrNull() to lasts.maxOrNull()
-    }
+    private val dataSpan = observeDataSpan(weightRepository, foodRepository, sleepRepository, clock.zone)
 
-    val uiState: StateFlow<GraphsUiState> = combine(range, dataSpan) { range, (first, last) ->
-        range to graphBounds(range, LocalDate.now(clock), first, last)
+    val uiState: StateFlow<GraphsUiState> = combine(range, dataSpan) { range, span ->
+        range to graphBounds(range, LocalDate.now(clock), span.first, span.last)
     }
         .distinctUntilChanged()
         .flatMapLatest { (range, bounds) ->
@@ -102,8 +82,6 @@ class GraphsViewModel(
         preferences.range = newRange
         range.value = newRange
     }
-
-    private fun Long.toLocalDate(): LocalDate = Instant.ofEpochMilli(this).atZone(clock.zone).toLocalDate()
 
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {

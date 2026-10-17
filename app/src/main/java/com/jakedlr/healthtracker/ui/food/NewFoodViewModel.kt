@@ -13,6 +13,7 @@ import com.jakedlr.healthtracker.data.SaveItemResult
 import com.jakedlr.healthtracker.data.db.FoodItem
 import com.jakedlr.healthtracker.domain.normalizeFoodName
 import com.jakedlr.healthtracker.domain.parseServings
+import com.jakedlr.healthtracker.ui.optionalDate
 import java.time.Clock
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -49,11 +50,11 @@ class NewFoodViewModel(
     private val clock: Clock,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(
-        LocalDateTime.now(clock).truncatedTo(ChronoUnit.MINUTES).let {
+        defaultEatenAt(clock, savedStateHandle.optionalDate()).let {
             NewFoodUiState(
                 barcode = savedStateHandle.get<String>(BARCODE_ARG),
                 eatenAt = it,
-                today = it.toLocalDate(),
+                today = LocalDate.now(clock),
             )
         },
     )

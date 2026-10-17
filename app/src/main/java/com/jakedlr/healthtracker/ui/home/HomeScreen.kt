@@ -40,6 +40,7 @@ fun HomeScreen(
     onAddSleep: () -> Unit,
     onOpenFoodLibrary: () -> Unit,
     onOpenGraphs: () -> Unit,
+    onOpenHistory: () -> Unit,
     viewModel: HomeViewModel = viewModel(factory = HomeViewModel.Factory),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -47,7 +48,7 @@ fun HomeScreen(
         viewModel.refreshToday()
         onPauseOrDispose { }
     }
-    HomeContent(state, onAddWeight, onAddFood, onAddSleep, onOpenFoodLibrary, onOpenGraphs)
+    HomeContent(state, onAddWeight, onAddFood, onAddSleep, onOpenFoodLibrary, onOpenGraphs, onOpenHistory)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -59,6 +60,7 @@ private fun HomeContent(
     onAddSleep: () -> Unit,
     onOpenFoodLibrary: () -> Unit,
     onOpenGraphs: () -> Unit,
+    onOpenHistory: () -> Unit,
 ) {
     Scaffold(topBar = { TopAppBar(title = { Text("Health Tracker") }) }) { padding ->
         Column(
@@ -112,6 +114,7 @@ private fun HomeContent(
             Button(onClick = onAddSleep, modifier = Modifier.fillMaxWidth()) { Text("Add sleep") }
             OutlinedButton(onClick = onOpenFoodLibrary, modifier = Modifier.fillMaxWidth()) { Text("Food library") }
             OutlinedButton(onClick = onOpenGraphs, modifier = Modifier.fillMaxWidth()) { Text("Graphs") }
+            OutlinedButton(onClick = onOpenHistory, modifier = Modifier.fillMaxWidth()) { Text("History") }
         }
     }
 }
@@ -125,7 +128,7 @@ private fun HomePreview() {
                 LocalDate.of(2026, 10, 16), 182.4, Nutrition(1840.0, 120.5, 190.0, 28.0, 60.2),
                 lastNightSleepMillis = 27_900_000,
             ),
-            {}, {}, {}, {}, {},
+            {}, {}, {}, {}, {}, {},
         )
     }
 }

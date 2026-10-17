@@ -32,7 +32,8 @@ Personal, single-user Android app for logging weight, food, and sleep, with grap
 
 - Screens never touch DAOs or the database directly. All data access goes through the repository layer.
 - ViewModels expose UI state as `StateFlow`.
-- Pure domain logic (sleep date attribution, daily aggregation, graph range bounds, nutrition math) lives in plain Kotlin functions with no Android dependencies, so it can be unit tested on the JVM.
+- Pure domain logic (sleep date attribution, daily aggregation, graph range bounds, nutrition math, calendar grid, per-day data marks) lives in plain Kotlin functions with no Android dependencies, so it can be unit tested on the JVM.
+- `observeDataSpan` (in `data/DataSpan.kt`) is the single source of firstAny/lastAny, used by Graphs and History.
 
 ## Time handling
 
@@ -122,6 +123,16 @@ Editing a food_item must **never** change existing food_log rows; only future lo
   - Errors show inline: wake not after sleep, longer than 24 h, or an overlap naming the conflicting entry's times.
 - **Graphs:** weight, calories, macros (protein/carbs/fat/fiber on one chart), sleep; range selector.
 - **History:** month calendar, swipe between months; tap a day to view and edit/delete that day's weight, food logs, and sleep.
+  - Months: from the month of the earliest data (`observeDataSpan`) to the current month; opens on the current month; ‹ › buttons as well as swiping. Week start follows the phone's locale.
+  - Each day shows up to three dots: weight (primary), food (tertiary), sleep (secondary), matching the graph colors. Sleep marks its **assigned** date; food its local date. Today is outlined; future days are dimmed and not tappable. Any past day (even empty) opens its Day screen.
+- **Day screen** (`day/{epochDay}`): full date; Weight, Food, and Sleep sections, each live-updating.
+  - Weight: value with **Edit** (opens Add weight locked to that date) and **Delete** (confirmation); or **Add weight**.
+  - Food: day totals, then each log (time, name, servings, kcal). Tapping a log opens **Edit food log**: servings and date/time only, with **Delete**. The nutrition snapshot never changes; totals recalculate from it.
+  - Sleep: total, then each entry assigned to the day (start – end, with the date shown for a side that falls on another day). Tapping opens Add sleep in **edit mode** (pre-filled; overlap check ignores the entry itself), with **Delete**.
+  - Each section has an **Add** shortcut preset to that day: Add weight is locked to the day; food defaults to that day at the current time of day; Add sleep's pickers suggest 11 PM that day (fields still start empty).
+  - Editing a time can move an entry to another day; it then disappears from this Day screen.
+  - Weight edits keep the date locked; to move a weigh-in, delete it and add it on the right day.
+- **Navigation:** add flows take an optional `date` argument (epoch day, `-1` = none). When a flow finishes, it returns to whoever started it (Home or a Day screen).
 - **Settings/Data:** export and import (see below).
 
 ## Data safety
@@ -154,5 +165,5 @@ Also:
 3. ✅ Barcode scanning
 4. ✅ Sleep logging with attribution and validation (schema v3)
 5. ✅ Remaining graphs + range selector
-6. History calendar with view/edit/delete
+6. ✅ History calendar with view/edit/delete
 7. Export/import

@@ -175,4 +175,33 @@ class FoodDaoTest {
         assertEquals(false, repository.linkBarcode(other, "4006381333931"))
         assertNull(dao.getItem(other)!!.barcode)
     }
+
+    @Test
+    fun editingALog_changesOnlyServingsAndTime_neverTheSnapshot() = runTest {
+        val id = dao.insertItem(item("Rice", kcal = 200.0))
+        repository.logFood(dao.getItem(id)!!, servings = 1.0, eatenAt = 1_000)
+        // The library item changes afterwards; the log must keep its own values.
+        repository.updateItem(dao.getItem(id)!!.withNutrition(Nutrition(999.0, 9.0, 9.0, 9.0, 9.0)))
+        val log = dao.observeLogsBetween(0, Long.MAX_VALUE).first().single()
+
+        repository.updateLog(log.id, servings = 1.5, eatenAt = 5_000)
+
+        val edited = dao.getLog(log.id)!!
+        assertEquals(log.copy(servings = 1.5, eatenAt = 5_000), edited)
+        assertEquals(300.0, edited.toLoggedFood().total.caloriesKcal, 0.0)
+    }
+
+    @Test
+    fun deletingALog_removesOnlyThatLog() = runTest {
+        val id = dao.insertItem(item("Tea"))
+        val tea = dao.getItem(id)!!
+        repository.logFood(tea, 1.0, eatenAt = 1_000)
+        repository.logFood(tea, 1.0, eatenAt = 2_000)
+        val first = dao.observeLogsBetween(0, Long.MAX_VALUE).first().first()
+
+        repository.deleteLog(first.id)
+
+        assertEquals(listOf(2_000L), dao.observeLogsBetween(0, Long.MAX_VALUE).first().map { it.eatenAt })
+        assertEquals(tea, dao.getItem(id)) // library untouched
+    }
 }

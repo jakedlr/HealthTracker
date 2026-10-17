@@ -4,6 +4,7 @@ import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
 data class StartAtRange(
@@ -18,6 +19,12 @@ interface SleepDao {
 
     @Query("SELECT * FROM sleep_entry WHERE id = :id")
     suspend fun get(id: Long): SleepEntry?
+
+    @Update
+    suspend fun update(entry: SleepEntry)
+
+    @Query("DELETE FROM sleep_entry WHERE id = :id")
+    suspend fun delete(id: Long)
 
     /** The earliest entry sharing time with [start, end), ignoring [excludeId] (0 to exclude nothing). */
     @Query(

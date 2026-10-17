@@ -12,6 +12,7 @@ import com.jakedlr.healthtracker.data.FoodRepository
 import com.jakedlr.healthtracker.data.db.FoodItem
 import com.jakedlr.healthtracker.domain.Nutrition
 import com.jakedlr.healthtracker.domain.parseServings
+import com.jakedlr.healthtracker.ui.optionalDate
 import java.time.Clock
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -36,6 +37,15 @@ data class LogFoodUiState(
     val total: Nutrition? get() = item?.let { i -> parseServings(servingsText)?.let { i.nutrition * it } }
 }
 
+/**
+ * Now, or the current time of day on [day] when food is being added for a specific past day
+ * (from History). Never later than now.
+ */
+fun defaultEatenAt(clock: Clock, day: LocalDate?): LocalDateTime {
+    val now = LocalDateTime.now(clock).truncatedTo(ChronoUnit.MINUTES)
+    return if (day == null || day >= now.toLocalDate()) now else LocalDateTime.of(day, now.toLocalTime())
+}
+
 class LogFoodViewModel(
     savedStateHandle: SavedStateHandle,
     private val repository: FoodRepository,
@@ -44,8 +54,8 @@ class LogFoodViewModel(
     private val itemId: Long = checkNotNull(savedStateHandle[ITEM_ID_ARG])
 
     private val _uiState = MutableStateFlow(
-        LocalDateTime.now(clock).truncatedTo(ChronoUnit.MINUTES).let {
-            LogFoodUiState(eatenAt = it, today = it.toLocalDate())
+        defaultEatenAt(clock, savedStateHandle.optionalDate()).let {
+            LogFoodUiState(eatenAt = it, today = LocalDate.now(clock))
         },
     )
     val uiState: StateFlow<LogFoodUiState> = _uiState.asStateFlow()

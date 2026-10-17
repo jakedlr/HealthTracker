@@ -97,4 +97,37 @@ class SleepDaoTest {
         assertEquals(at(5, 23), range.first)
         assertEquals(at(9, 23), range.last)
     }
+
+    @Test
+    fun editingAnEntry_doesNotConflictWithItself() = runTest {
+        val id = (repository.addSleep(at(8, 23), at(9, 7)) as SaveSleepResult.Saved).id
+
+        assertEquals(SaveSleepResult.Saved(id), repository.updateSleep(id, at(8, 22, 30), at(9, 6, 30)))
+        assertEquals(SleepEntry(id, at(8, 22, 30), at(9, 6, 30)), dao.get(id))
+    }
+
+    @Test
+    fun editingIntoAnotherEntry_isRejected_andLeavesBothUnchanged() = runTest {
+        val night = (repository.addSleep(at(8, 23), at(9, 7)) as SaveSleepResult.Saved).id
+        val nap = (repository.addSleep(at(9, 14), at(9, 15)) as SaveSleepResult.Saved).id
+
+        val result = repository.updateSleep(nap, at(9, 6), at(9, 9))
+
+        assertEquals(night, (result as SaveSleepResult.Overlaps).existing.id)
+        assertEquals(SleepEntry(nap, at(9, 14), at(9, 15)), dao.get(nap))
+    }
+
+    @Test
+    fun editingWithInvalidTimes_isRejected() = runTest {
+        val id = (repository.addSleep(at(8, 23), at(9, 7)) as SaveSleepResult.Saved).id
+        assertEquals(SaveSleepResult.Invalid(SleepError.END_NOT_AFTER_START), repository.updateSleep(id, at(9, 7), at(8, 23)))
+        assertEquals(SleepEntry(id, at(8, 23), at(9, 7)), dao.get(id))
+    }
+
+    @Test
+    fun deleteSleep_removesTheEntry() = runTest {
+        val id = (repository.addSleep(at(8, 23), at(9, 7)) as SaveSleepResult.Saved).id
+        repository.deleteSleep(id)
+        assertNull(dao.get(id))
+    }
 }

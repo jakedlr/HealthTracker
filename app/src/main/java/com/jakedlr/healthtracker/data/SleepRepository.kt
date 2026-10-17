@@ -34,6 +34,20 @@ class SleepRepository(
         }
     }
 
+    suspend fun getSleep(id: Long): SleepEntry? = dao.get(id)
+
+    /** Same rules as [addSleep]; the entry being edited never counts as overlapping itself. */
+    suspend fun updateSleep(id: Long, startAt: Long, endAt: Long): SaveSleepResult {
+        validateSleep(startAt, endAt)?.let { return SaveSleepResult.Invalid(it) }
+        return database.withTransaction {
+            dao.findOverlapping(startAt, endAt, excludeId = id)?.let { return@withTransaction SaveSleepResult.Overlaps(it) }
+            dao.update(SleepEntry(id = id, startAt = startAt, endAt = endAt))
+            SaveSleepResult.Saved(id)
+        }
+    }
+
+    suspend fun deleteSleep(id: Long) = dao.delete(id)
+
     /** Entries whose assigned date (see sleepDate) is [date]. */
     fun observeSleepForDate(date: LocalDate, zone: ZoneId): Flow<List<SleepEntry>> =
         observeSleepForDates(date..date, zone)

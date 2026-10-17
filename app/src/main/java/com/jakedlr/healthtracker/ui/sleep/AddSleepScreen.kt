@@ -24,6 +24,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jakedlr.healthtracker.data.db.SleepEntry
 import com.jakedlr.healthtracker.domain.SleepError
 import com.jakedlr.healthtracker.ui.BackButton
+import com.jakedlr.healthtracker.ui.ConfirmDeleteDialog
+import com.jakedlr.healthtracker.ui.DeleteButton
 import com.jakedlr.healthtracker.ui.OptionalDateTimeField
 import com.jakedlr.healthtracker.ui.formatDuration
 import java.time.Instant
@@ -40,13 +42,20 @@ fun AddSleepScreen(
     viewModel: AddSleepViewModel = viewModel(factory = AddSleepViewModel.Factory),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    LaunchedEffect(state.saved) {
-        if (state.saved) onDone()
+    LaunchedEffect(state.finished) {
+        if (state.finished) onDone()
     }
+    val editing = state.editingId != null
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Add sleep") }, navigationIcon = { BackButton(onDone) }) },
+        topBar = {
+            TopAppBar(
+                title = { Text(if (editing) "Edit sleep" else "Add sleep") },
+                navigationIcon = { BackButton(onDone) },
+            )
+        },
     ) { padding ->
+        if (state.loading) return@Scaffold
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -59,18 +68,19 @@ fun AddSleepScreen(
             OptionalDateTimeField(
                 date = state.startDate,
                 time = state.startTime,
-                suggestedDate = state.today.minusDays(1),
-                suggestedTime = LocalTime.of(23, 0),
+                suggestedDate = state.suggestedStart.toLocalDate(),
+                suggestedTime = state.suggestedStart.toLocalTime(),
                 today = state.today,
                 allowFutureDates = false,
                 onDateChange = viewModel::onStartDateChange,
                 onTimeChange = viewModel::onStartTimeChange,
             )
 
-            // Suggest a wake time 8 hours after the chosen sleep time.
-            val suggestedEnd = state.startDate?.let { d ->
-                LocalDateTime.of(d, state.startTime ?: LocalTime.of(23, 0)).plusHours(8)
-            } ?: LocalDateTime.of(state.today, LocalTime.of(7, 0))
+            // Suggest a wake time 8 hours after the chosen (or suggested) sleep time.
+            val suggestedEnd = LocalDateTime.of(
+                state.startDate ?: state.suggestedStart.toLocalDate(),
+                state.startTime ?: LocalTime.of(23, 0),
+            ).plusHours(8)
             Text("Woke up", style = MaterialTheme.typography.labelLarge)
             OptionalDateTimeField(
                 date = state.endDate,
@@ -108,7 +118,17 @@ fun AddSleepScreen(
             }
 
             Button(onClick = viewModel::save, modifier = Modifier.fillMaxWidth()) { Text("Save") }
+            if (editing) DeleteButton("Delete sleep", viewModel::requestDelete)
         }
+    }
+
+    if (state.confirmingDelete) {
+        ConfirmDeleteDialog(
+            title = "Delete this sleep?",
+            text = "This can't be undone.",
+            onConfirm = viewModel::confirmDelete,
+            onDismiss = viewModel::cancelDelete,
+        )
     }
 }
 
