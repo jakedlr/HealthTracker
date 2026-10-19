@@ -7,11 +7,14 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 
 /** Current schema version. Imports accept files from version 1 up to this. */
-const val HEALTH_DB_VERSION = 3
+const val HEALTH_DB_VERSION = 4
 
 // Every schema change after v1 must ship a Migration; never use destructive fallback.
 @Database(
-    entities = [WeightEntry::class, FoodItem::class, FoodLog::class, SleepEntry::class],
+    entities = [
+        WeightEntry::class, FoodItem::class, FoodLog::class, SleepEntry::class,
+        ExerciseCategory::class, Exercise::class, ExerciseLog::class,
+    ],
     version = HEALTH_DB_VERSION,
     exportSchema = true,
 )
@@ -20,6 +23,7 @@ abstract class HealthDatabase : RoomDatabase() {
     abstract fun weightDao(): WeightDao
     abstract fun foodDao(): FoodDao
     abstract fun sleepDao(): SleepDao
+    abstract fun trainingDao(): TrainingDao
 
     companion object {
         const val NAME = "health.db"

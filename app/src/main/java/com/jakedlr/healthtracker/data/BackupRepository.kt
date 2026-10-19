@@ -28,7 +28,8 @@ data class DataSummary(
     val foodItems: Long,
     val foodLogs: Long,
     val sleepEntries: Long,
-    /** Earliest and latest day with any data (sleep by its assigned date); null when empty. */
+    val exerciseLogs: Long,
+    /** Earliest and latest day with weight, food, or sleep (sleep by its sleep date); null when empty. */
     val firstDay: LocalDate?,
     val lastDay: LocalDate?,
 )
@@ -93,7 +94,7 @@ class BackupRepository(
         val db = holder.database.openHelper.readableDatabase
         summarize(
             queryLong = { sql -> db.query(sql).use { c -> if (c.moveToFirst() && !c.isNull(0)) c.getLong(0) else null } },
-            tables = setOf("weight_entry", "food_item", "food_log", "sleep_entry"),
+            tables = setOf("weight_entry", "food_item", "food_log", "sleep_entry", "exercise_log"),
         )
     }
 
@@ -187,6 +188,7 @@ class BackupRepository(
         add("weight_entry")
         if (version >= 2) addAll(listOf("food_item", "food_log"))
         if (version >= 3) add("sleep_entry")
+        if (version >= 4) addAll(listOf("exercise_category", "exercise", "exercise_log"))
     }
 
     private fun tableNames(db: SQLiteDatabase): Set<String> =
@@ -224,6 +226,7 @@ class BackupRepository(
             foodItems = count("food_item"),
             foodLogs = count("food_log"),
             sleepEntries = count("sleep_entry"),
+            exerciseLogs = count("exercise_log"),
             firstDay = firsts.minOrNull(),
             lastDay = lasts.maxOrNull(),
         )

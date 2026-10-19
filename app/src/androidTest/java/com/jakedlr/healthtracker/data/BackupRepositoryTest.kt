@@ -8,6 +8,10 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.jakedlr.healthtracker.data.db.FoodItem
 import com.jakedlr.healthtracker.data.db.HealthDatabase
 import com.jakedlr.healthtracker.data.db.WeightEntry
+import com.jakedlr.healthtracker.domain.LoadUnit
+import com.jakedlr.healthtracker.domain.Sidedness
+import com.jakedlr.healthtracker.domain.TopSet
+import com.jakedlr.healthtracker.domain.TopSets
 import java.io.File
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -75,6 +79,12 @@ class BackupRepositoryTest {
         )
         foodRepo.logFood(db.foodDao().getItem(id)!!, 1.5, at(1, 8))
         SleepRepository(db, db.sleepDao()).addSleep(at(1, 23), at(2, 7))
+        val training = TrainingRepository(db, db.trainingDao())
+        val back = (training.createCategory("Back day") as TrainingSaveResult.Saved).id
+        val legs = (training.createCategory("Leg day") as TrainingSaveResult.Saved).id
+        training.reorderCategories(listOf(legs, back))
+        val lunge = (training.createExercise(legs, "Lunge", Sidedness.SINGLE, LoadUnit.LBS) as TrainingSaveResult.Saved).id
+        training.saveLog(lunge, null, LocalDate.of(2026, 10, 1), LoadUnit.LBS, TopSets.PerSide(TopSet(20.0, 10), TopSet(22.5, 8)))
     }
 
     private fun fileWithSql(name: String, version: Int, vararg sql: String): Uri {
@@ -93,6 +103,7 @@ class BackupRepositoryTest {
         assertEquals(2L, exported.weighIns)
         assertEquals(1L, exported.foodLogs)
         assertEquals(1L, exported.sleepEntries)
+        assertEquals(1L, exported.exerciseLogs)
         assertEquals(LocalDate.of(2026, 10, 1), exported.firstDay)
 
         val target = repo(dst, names[1])
@@ -106,6 +117,13 @@ class BackupRepositoryTest {
         assertEquals(a.foodDao().searchItems("%").first(), b.foodDao().searchItems("%").first())
         assertEquals(a.foodDao().observeLogsBetween(0, Long.MAX_VALUE).first(), b.foodDao().observeLogsBetween(0, Long.MAX_VALUE).first())
         assertEquals(a.sleepDao().observeStartingBetween(0, Long.MAX_VALUE).first(), b.sleepDao().observeStartingBetween(0, Long.MAX_VALUE).first())
+        val categories = b.trainingDao().observeCategories().first()
+        assertEquals(listOf("Leg day", "Back day"), categories.map { it.name })
+        assertEquals(a.trainingDao().observeCategories().first(), categories)
+        val exercises = a.trainingDao().observeExercises(categories[0].id).first()
+        assertEquals(exercises, b.trainingDao().observeExercises(categories[0].id).first())
+        val lunge = exercises.single().exercise.id
+        assertEquals(a.trainingDao().observeAllLogs(lunge).first(), b.trainingDao().observeAllLogs(lunge).first())
     }
 
     @Test
@@ -137,6 +155,18 @@ class BackupRepositoryTest {
     @Test
     fun missingTables_isRejected() = runBlocking {
         val uri = fileWithSql("missing.db", 3, "CREATE TABLE weight_entry (date INTEGER PRIMARY KEY, weight_lbs REAL)")
+        assertEquals(InspectResult.Invalid(InvalidBackup.MISSING_TABLES), repo(dst, names[1]).inspect(uri))
+    }
+
+    @Test
+    fun version4FileWithoutTrainingTables_isRejected() = runBlocking {
+        val uri = fileWithSql(
+            "missing-training.db", 4,
+            "CREATE TABLE weight_entry (date INTEGER PRIMARY KEY, weight_lbs REAL)",
+            "CREATE TABLE food_item (id INTEGER PRIMARY KEY)",
+            "CREATE TABLE food_log (id INTEGER PRIMARY KEY)",
+            "CREATE TABLE sleep_entry (id INTEGER PRIMARY KEY)",
+        )
         assertEquals(InspectResult.Invalid(InvalidBackup.MISSING_TABLES), repo(dst, names[1]).inspect(uri))
     }
 

@@ -93,6 +93,46 @@ class MigrationTest {
         }
     }
 
+    @Test
+    fun migrate3To4_keepsEverything_andAddsTrainingTables() {
+        helper.createDatabase(3).use { connection ->
+            connection.execSQL("INSERT INTO weight_entry (date, weight_lbs) VALUES (20742, 182.4)")
+            connection.execSQL(
+                "INSERT INTO food_item (name, calories_kcal, protein_g, carbs_g, fiber_g, fat_g) " +
+                    "VALUES ('Apple', 95, 0.5, 25, 4.4, 0.3)",
+            )
+            connection.execSQL(
+                "INSERT INTO food_log (food_item_id, eaten_at, servings, name, calories_kcal, protein_g, " +
+                    "carbs_g, fiber_g, fat_g) VALUES (1, 0, 1, 'Apple', 95, 0.5, 25, 4.4, 0.3)",
+            )
+            connection.execSQL("INSERT INTO sleep_entry (start_at, end_at) VALUES (1000, 2000)")
+        }
+
+        // Validates the migrated schema against the exported 4.json.
+        helper.runMigrationsAndValidate(4, listOf(MIGRATION_3_4)).use { connection ->
+            for (table in listOf("weight_entry", "food_item", "food_log", "sleep_entry")) {
+                connection.prepare("SELECT COUNT(*) FROM $table").use { stmt ->
+                    stmt.step()
+                    assertEquals(table, 1L, stmt.getLong(0))
+                }
+            }
+            connection.execSQL("INSERT INTO exercise_category (name, position) VALUES ('Leg day', 0)")
+            connection.execSQL(
+                "INSERT INTO exercise (category_id, name, sidedness, default_unit, position) " +
+                    "VALUES (1, 'Lunge', 'SINGLE', 'LBS', 0)",
+            )
+            connection.execSQL(
+                "INSERT INTO exercise_log (exercise_id, date, unit, left_load, left_reps, right_load, right_reps) " +
+                    "VALUES (1, 20742, 'LBS', 20, 10, 22.5, 8)",
+            )
+            connection.prepare("SELECT right_load, right_reps FROM exercise_log").use { stmt ->
+                stmt.step()
+                assertEquals(22.5, stmt.getDouble(0), 0.0)
+                assertEquals(8L, stmt.getLong(1))
+            }
+        }
+    }
+
     private companion object {
         const val DB_NAME = "migration-test.db"
     }

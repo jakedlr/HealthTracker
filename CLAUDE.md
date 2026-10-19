@@ -32,7 +32,7 @@ Personal, single-user Android app for logging weight, food, and sleep, with grap
 
 - Screens never touch DAOs or the database directly. All data access goes through the repository layer.
 - ViewModels expose UI state as `StateFlow`.
-- Pure domain logic (sleep date attribution, daily aggregation, graph window bounds, nutrition math, calendar grid, per-day data marks) lives in plain Kotlin functions with no Android dependencies, so it can be unit tested on the JVM.
+- Pure domain logic (sleep date attribution, daily aggregation, graph window bounds, nutrition math, calendar grid, per-day data marks, training validation and reorder) lives in plain Kotlin functions with no Android dependencies, so it can be unit tested on the JVM.
 - `observeDataSpan` (in `data/DataSpan.kt`) is the single source of firstAny/lastAny, used by Graphs and History.
 
 ## Time handling
@@ -73,6 +73,20 @@ Editing a food_item must **never** change existing food_log rows; only future lo
 - Validation: `end_at > start_at`, and duration at most 24 hours (exactly 24 h is allowed). Reject entries that overlap an existing sleep entry. Entries that only touch (one ends exactly when the next starts) do **not** overlap and are allowed. Wake times in the future are allowed.
 - The day a sleep counts toward is **derived, never stored** (see below).
 
+**exercise_category**
+- `id` (Long, primary key); `name` (unique, case-insensitive via `COLLATE NOCASE`; trimmed on save); `position` (Int, the user's order)
+
+**exercise**
+- `id` (Long, primary key); `category_id` (FK to exercise_category, `ON DELETE RESTRICT`: a category with exercises can't be deleted)
+- `name` (unique across **all** exercises, case-insensitive, trimmed); `sidedness` (`SINGLE`/`DOUBLE`); `default_unit` (`LBS`/`KG`); `position` (order within its category)
+- Sidedness can change only while the exercise has no logs. Name, category, and default unit can always change; moving to another category puts the exercise at the bottom there.
+
+**exercise_log**
+- `id` (Long, primary key); `exercise_id` (FK to exercise, `ON DELETE CASCADE`); `date` (LocalDate, epoch day); `unit` (`LBS`/`KG`, the log's own, never converted)
+- The **top set** (one load × reps): double-sided fills `load`/`reps`; single-sided fills `left_load`/`left_reps` and `right_load`/`right_reps`, with a skipped side null (never both).
+- Unique on (`exercise_id`, `date`): one log per exercise per day; saving for a date that has a log replaces it (upsert).
+- Training dates are plain local dates, so ADR-0001's time-zone caveat doesn't apply. Training data is **not** part of Home's summary, Graphs, History, or `observeDataSpan`.
+
 ## Domain rules
 
 **Sleep attribution:** sleep date = local date of (`start_at` − 12 hours).
@@ -107,6 +121,7 @@ Editing a food_item must **never** change existing food_log rows; only future lo
 - Weight: greater than 0 and at most 1000 lbs.
 - Servings: greater than 0, fractions allowed. Nutrition values: 0 or more, all five required. Decimal commas are accepted.
 - Date pickers block future dates, except the sleep **Woke up** date.
+- Exercise logs: load 0 (bodyweight) to 2000, decimals and decimal commas accepted; reps a whole number 1–999. Category and exercise names must not be blank.
 
 ## Screens
 
@@ -134,7 +149,16 @@ Editing a food_item must **never** change existing food_log rows; only future lo
   - Editing a time can move an entry to another day; it then disappears from this Day screen.
   - Weight edits keep the date locked; to move a weigh-in, delete it and add it on the right day.
 - **Navigation:** add flows take an optional `date` argument (epoch day, `-1` = none). When a flow finishes, it returns to whoever started it (Home or a Day screen).
-- **Data** (button on Home): shows what's on the phone (counts and date span); **Export data** and **Import data** (see Data safety).
+- **Weight training** (button on Home):
+  - **Weight training** screen: categories in the user's order (long-press and drag to reorder), **New category** (name dialog), empty state.
+  - **Category**: its exercises in order (drag to reorder), each with its last logged date; **New exercise**; **Rename**; **Delete** (only when empty, otherwise it explains why).
+  - **New/Edit exercise**: name, category (pre-set to the current one), sides (Double/Single, no default for a new exercise; locked once it has logs), default unit (pre-selects lbs).
+  - **Exercise**: sidedness and default unit; **Add log**, or **Edit today's log** when today is logged; the 10 most recent logs, newest first (tap to edit); **All logs**; **Edit**; **Delete** (confirmation states the log count; deletes the logs).
+  - **All logs**: every log, newest first; tap to edit; **Add log** to back-fill.
+  - **Add/Edit log**: date (defaults to today, no future dates; a date with a log loads it and says saving replaces it), unit (pre-selected from the exercise), load × reps (per side with **Skip this side** for single-sided), **Delete** (when editing, always the log that was opened; when adding, the log already on the date). While editing, an empty date keeps the opened log's values so it can be moved there.
+  - Logs display as "135 lbs × 8" or "L 20 × 10 · R 22.5 × 8 lbs" ("—" for a skipped side).
+  - Reordering is hand-written (`ui/training/ReorderableColumn.kt`, no library); the order is stored in the database, so it survives export/import. New items go to the bottom.
+- **Data** (button on Home): shows what's on the phone (counts, including exercise logs, and date span); **Export data** and **Import data** (see Data safety).
 
 **Theme / dark mode**
 - The window theme follows the system: `values/themes.xml` is light, `values-night/themes.xml` is dark (`android:Theme.Material.NoActionBar`).
@@ -155,7 +179,7 @@ Editing a food_item must **never** change existing food_log rows; only future lo
 
 ## Testing
 
-Unit tests are required for: sleep attribution (including crossing midnight and crossing noon), overlap detection, daily aggregation with missing days, graph window bounds, and snapshot math (editing an item doesn't change past totals). Add a Room DAO test for the weight upsert.
+Unit tests are required for: training validation and reorder arithmetic (`TrainingTest`), sleep attribution (including crossing midnight and crossing noon), overlap detection, daily aggregation with missing days, graph window bounds, and snapshot math (editing an item doesn't change past totals). Add a Room DAO test for the weight upsert. `TrainingRepositoryTest` (instrumented) covers the one-log-per-day upsert, name uniqueness, ordering, delete rules, and the sidedness lock.
 
 Also:
 - Every schema migration gets a `MigrationTestHelper` test (in `androidTest/.../MigrationTest.kt`). The driver-based helper doesn't clean up between tests, so `MigrationTest` deletes its database file in `@Before`.
@@ -182,6 +206,7 @@ Also:
 5. ✅ Remaining graphs + range selector
 6. ✅ History calendar with view/edit/delete
 7. ✅ Export/import (plus dark-mode transition flash fix)
+8. ✅ Weight training logging (schema v4; spec in `.scratch/weight-training/spec.md`)
 
 ## Agent skills
 

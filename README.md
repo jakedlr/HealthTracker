@@ -8,6 +8,7 @@ A personal Android app for keeping track of weight, food, and sleep, with graphs
 - **Weight:** one weigh-in per day.
 - **Food:** scan a product's barcode, pick something from your personal food library, or enter it by hand. Choose how many servings you had, and the app works out calories, protein, carbs, fat, and fiber.
 - **Sleep:** enter when you fell asleep and woke up. Sleep counts toward the night it started, so going to bed at 1 AM still counts as the previous night.
+- **Weight training:** group exercises into your own categories (e.g. "Leg day"), in whatever order you like. Log each exercise's top set for the day as load × reps, in lbs or kg, with separate left and right sides for single-arm or single-leg exercises. Each exercise shows its last 10 logs and its full history.
 
 **See how you're doing**
 - **Home:** today's weight, calories, and macros, plus how long you slept last night.

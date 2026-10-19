@@ -121,6 +121,7 @@ class DataViewModel(
     }
 }
 
-/** e.g. "412 weigh-ins, 1,830 food logs, 260 sleep entries". */
+/** e.g. "412 weigh-ins, 1,830 food logs, 260 sleep entries, 95 exercise logs". */
 fun describe(s: DataSummary): String =
-    "%,d weigh-ins, %,d food logs, %,d sleep entries".format(s.weighIns, s.foodLogs, s.sleepEntries)
+    "%,d weigh-ins, %,d food logs, %,d sleep entries, %,d exercise logs"
+        .format(s.weighIns, s.foodLogs, s.sleepEntries, s.exerciseLogs)

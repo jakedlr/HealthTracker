@@ -40,4 +40,35 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
     }
 }
 
-val ALL_MIGRATIONS = arrayOf(MIGRATION_1_2, MIGRATION_2_3)
+/** v4: weight training (exercise categories, exercises, exercise logs). */
+val MIGRATION_3_4 = object : Migration(3, 4) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            "CREATE TABLE IF NOT EXISTS `exercise_category` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`name` TEXT NOT NULL COLLATE NOCASE, `position` INTEGER NOT NULL)",
+        )
+        connection.execSQL(
+            "CREATE UNIQUE INDEX IF NOT EXISTS `index_exercise_category_name` ON `exercise_category` (`name`)",
+        )
+        connection.execSQL(
+            "CREATE TABLE IF NOT EXISTS `exercise` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`category_id` INTEGER NOT NULL, `name` TEXT NOT NULL COLLATE NOCASE, `sidedness` TEXT NOT NULL, " +
+                "`default_unit` TEXT NOT NULL, `position` INTEGER NOT NULL, " +
+                "FOREIGN KEY(`category_id`) REFERENCES `exercise_category`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        )
+        connection.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_exercise_name` ON `exercise` (`name`)")
+        connection.execSQL("CREATE INDEX IF NOT EXISTS `index_exercise_category_id` ON `exercise` (`category_id`)")
+        connection.execSQL(
+            "CREATE TABLE IF NOT EXISTS `exercise_log` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`exercise_id` INTEGER NOT NULL, `date` INTEGER NOT NULL, `unit` TEXT NOT NULL, `load` REAL, " +
+                "`reps` INTEGER, `left_load` REAL, `left_reps` INTEGER, `right_load` REAL, `right_reps` INTEGER, " +
+                "FOREIGN KEY(`exercise_id`) REFERENCES `exercise`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        )
+        connection.execSQL(
+            "CREATE UNIQUE INDEX IF NOT EXISTS `index_exercise_log_exercise_id_date` " +
+                "ON `exercise_log` (`exercise_id`, `date`)",
+        )
+    }
+}
+
+val ALL_MIGRATIONS = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)

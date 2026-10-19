@@ -4,6 +4,7 @@ import android.content.Context
 import com.jakedlr.healthtracker.data.FoodRepository
 import com.jakedlr.healthtracker.data.GraphPreferences
 import com.jakedlr.healthtracker.data.SleepRepository
+import com.jakedlr.healthtracker.data.TrainingRepository
 import com.jakedlr.healthtracker.data.WeightRepository
 import com.jakedlr.healthtracker.data.db.HealthDatabase
 import java.time.Clock
@@ -19,5 +20,6 @@ class AppContainer(context: Context) {
     val weightRepository = WeightRepository(database.weightDao())
     val foodRepository = FoodRepository(database, database.foodDao())
     val sleepRepository = SleepRepository(database, database.sleepDao())
+    val trainingRepository = TrainingRepository(database, database.trainingDao())
     val graphPreferences = GraphPreferences(context)
 }

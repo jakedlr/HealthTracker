@@ -42,6 +42,7 @@ fun HomeScreen(
     onOpenGraphs: () -> Unit,
     onOpenHistory: () -> Unit,
     onOpenData: () -> Unit,
+    onOpenTraining: () -> Unit,
     viewModel: HomeViewModel = viewModel(factory = HomeViewModel.Factory),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -49,7 +50,10 @@ fun HomeScreen(
         viewModel.refreshToday()
         onPauseOrDispose { }
     }
-    HomeContent(state, onAddWeight, onAddFood, onAddSleep, onOpenFoodLibrary, onOpenGraphs, onOpenHistory, onOpenData)
+    HomeContent(
+        state, onAddWeight, onAddFood, onAddSleep, onOpenFoodLibrary, onOpenGraphs, onOpenHistory, onOpenData,
+        onOpenTraining,
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -63,6 +67,7 @@ private fun HomeContent(
     onOpenGraphs: () -> Unit,
     onOpenHistory: () -> Unit,
     onOpenData: () -> Unit,
+    onOpenTraining: () -> Unit,
 ) {
     Scaffold(topBar = { TopAppBar(title = { Text("Health Tracker") }) }) { padding ->
         Column(
@@ -114,6 +119,7 @@ private fun HomeContent(
             Button(onClick = onAddWeight, modifier = Modifier.fillMaxWidth()) { Text("Add weight") }
             Button(onClick = onAddFood, modifier = Modifier.fillMaxWidth()) { Text("Add food") }
             Button(onClick = onAddSleep, modifier = Modifier.fillMaxWidth()) { Text("Add sleep") }
+            Button(onClick = onOpenTraining, modifier = Modifier.fillMaxWidth()) { Text("Weight training") }
             OutlinedButton(onClick = onOpenFoodLibrary, modifier = Modifier.fillMaxWidth()) { Text("Food library") }
             OutlinedButton(onClick = onOpenGraphs, modifier = Modifier.fillMaxWidth()) { Text("Graphs") }
             OutlinedButton(onClick = onOpenHistory, modifier = Modifier.fillMaxWidth()) { Text("History") }
@@ -131,7 +137,7 @@ private fun HomePreview() {
                 LocalDate.of(2026, 10, 16), 182.4, Nutrition(1840.0, 120.5, 190.0, 28.0, 60.2),
                 lastNightSleepMillis = 27_900_000,
             ),
-            {}, {}, {}, {}, {}, {}, {},
+            {}, {}, {}, {}, {}, {}, {}, {},
         )
     }
 }

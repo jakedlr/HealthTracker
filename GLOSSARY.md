@@ -58,6 +58,34 @@ The rule that gives each sleep entry its sleep date.
 **Last night**:
 The total sleep whose sleep date is yesterday, naps included.
 
+## Weight training
+
+**Exercise category**:
+A named group of exercises the user creates, such as "Leg day" or "Back day".
+_Avoid_: Workout, split, routine
+
+**Exercise**:
+One movement the user tracks, such as "Bulgarian split squat", belonging to exactly one exercise category.
+_Avoid_: Workout, lift, movement
+
+**Sidedness**:
+Whether an exercise is done with both sides together (double) or one side at a time (single), in which case each side is logged separately.
+
+**Exercise log**:
+One exercise's record for one day: its top set, per side for a single-sided exercise (a side may be skipped).
+_Avoid_: Instance, entry, session
+
+**Top set**:
+The one load × reps an exercise log records for a side: the main or best set of that day.
+_Avoid_: Set (unqualified)
+
+**Load**:
+The weight lifted in an exercise log, in that log's unit.
+_Avoid_: Weight (reserved for weigh-ins)
+
+**Default unit**:
+The unit (kg or lb) an exercise pre-selects for new exercise logs; changing it never alters past logs.
+
 ## Graphs
 
 **Range**:

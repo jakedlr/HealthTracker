@@ -1,5 +1,9 @@
 package com.jakedlr.healthtracker.ui
 
+import com.jakedlr.healthtracker.domain.LoadUnit
+import com.jakedlr.healthtracker.domain.Sidedness
+import com.jakedlr.healthtracker.domain.TopSet
+import com.jakedlr.healthtracker.domain.TopSets
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -23,3 +27,16 @@ fun formatDuration(millis: Long): String {
 /** Up to two decimals without trailing zeros, e.g. 1, 1.5, 0.25. Also used to pre-fill inputs. */
 fun formatAmount(value: Double): String =
     String.format(Locale.US, "%.2f", value).trimEnd('0').trimEnd('.')
+
+/** An exercise log's top sets, e.g. "135 lbs × 8" or "L 20 × 10 · R 22.5 × 8 lbs" ("—" for a skipped side). */
+fun formatTopSets(sets: TopSets, unit: LoadUnit): String = when (sets) {
+    is TopSets.Both -> "${formatAmount(sets.set.load)} ${unit.label} × ${sets.set.reps}"
+    is TopSets.PerSide -> "L ${side(sets.left)} · R ${side(sets.right)} ${unit.label}"
+}
+
+private fun side(set: TopSet?): String = set?.let { "${formatAmount(it.load)} × ${it.reps}" } ?: "—"
+
+fun Sidedness.label(): String = when (this) {
+    Sidedness.SINGLE -> "Single-sided"
+    Sidedness.DOUBLE -> "Double-sided"
+}

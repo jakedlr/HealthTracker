@@ -29,6 +29,16 @@ import com.jakedlr.healthtracker.ui.home.HomeScreen
 import com.jakedlr.healthtracker.ui.scan.ScanScreen
 import com.jakedlr.healthtracker.ui.sleep.AddSleepScreen
 import com.jakedlr.healthtracker.ui.sleep.AddSleepViewModel
+import com.jakedlr.healthtracker.ui.training.AllLogsScreen
+import com.jakedlr.healthtracker.ui.training.CategoryScreen
+import com.jakedlr.healthtracker.ui.training.CategoryViewModel
+import com.jakedlr.healthtracker.ui.training.ExerciseFormScreen
+import com.jakedlr.healthtracker.ui.training.ExerciseFormViewModel
+import com.jakedlr.healthtracker.ui.training.ExerciseLogFormScreen
+import com.jakedlr.healthtracker.ui.training.ExerciseLogFormViewModel
+import com.jakedlr.healthtracker.ui.training.ExerciseScreen
+import com.jakedlr.healthtracker.ui.training.NO_ID
+import com.jakedlr.healthtracker.ui.training.TrainingScreen
 import com.jakedlr.healthtracker.ui.weight.AddWeightScreen
 import java.time.LocalDate
 
@@ -41,6 +51,9 @@ object Routes {
     private const val ITEM_ID = LogFoodViewModel.ITEM_ID_ARG
     private const val SLEEP_ID = AddSleepViewModel.SLEEP_ID_ARG
     private const val DATE_Q = "$DATE_ARG={$DATE_ARG}"
+    private const val CATEGORY_ID = CategoryViewModel.CATEGORY_ID_ARG
+    private const val EXERCISE_ID = ExerciseFormViewModel.EXERCISE_ID_ARG
+    private const val LOG_ID = ExerciseLogFormViewModel.LOG_ID_ARG
 
     const val HOME = "home"
     const val GRAPHS = "graphs"
@@ -56,6 +69,12 @@ object Routes {
     const val EDIT_FOOD_LOG = "editFoodLog/{${EditFoodLogViewModel.LOG_ID_ARG}}"
     const val FOOD_LIBRARY = "foodLibrary"
     const val EDIT_FOOD = "editFood/{${EditFoodViewModel.ITEM_ID_ARG}}"
+    const val TRAINING = "training"
+    const val CATEGORY = "category/{$CATEGORY_ID}"
+    const val EXERCISE_FORM = "exerciseForm?$CATEGORY_ID={$CATEGORY_ID}&$EXERCISE_ID={$EXERCISE_ID}"
+    const val EXERCISE = "exercise/{$EXERCISE_ID}"
+    const val ALL_LOGS = "exercise/{$EXERCISE_ID}/logs"
+    const val EXERCISE_LOG_FORM = "exercise/{$EXERCISE_ID}/log?$LOG_ID={$LOG_ID}"
 
     private fun d(date: Long) = "$DATE_ARG=$date"
 
@@ -70,6 +89,13 @@ object Routes {
     fun logFood(itemId: Long, date: Long) = "logFood/$itemId?${d(date)}"
     fun editFoodLog(logId: Long) = "editFoodLog/$logId"
     fun editFood(itemId: Long) = "editFood/$itemId"
+    fun category(id: Long) = "category/$id"
+    fun newExercise(categoryId: Long) = "exerciseForm?$CATEGORY_ID=$categoryId"
+    fun editExercise(id: Long) = "exerciseForm?$EXERCISE_ID=$id"
+    fun exercise(id: Long) = "exercise/$id"
+    fun allLogs(exerciseId: Long) = "exercise/$exerciseId/logs"
+    fun addExerciseLog(exerciseId: Long) = "exercise/$exerciseId/log"
+    fun editExerciseLog(exerciseId: Long, logId: Long) = "exercise/$exerciseId/log?$LOG_ID=$logId"
 }
 
 private val dateArgument: NamedNavArgument = navArgument(DATE_ARG) {
@@ -102,6 +128,7 @@ fun HealthTrackerNavHost() {
                 onOpenGraphs = { navController.navigate(Routes.GRAPHS) },
                 onOpenHistory = { navController.navigate(Routes.HISTORY) },
                 onOpenData = { navController.navigate(Routes.DATA) },
+                onOpenTraining = { navController.navigate(Routes.TRAINING) },
             )
         }
         composable(Routes.ADD_WEIGHT, arguments = listOf(dateArgument)) {
@@ -197,6 +224,52 @@ fun HealthTrackerNavHost() {
         }
         composable(Routes.EDIT_FOOD, arguments = listOf(longArgument(EditFoodViewModel.ITEM_ID_ARG))) {
             EditFoodScreen(onDone = back)
+        }
+
+        // Weight training: categories → category → exercise → all logs; log forms return to their opener.
+        composable(Routes.TRAINING) {
+            TrainingScreen(onBack = back, onOpenCategory = { navController.navigate(Routes.category(it)) })
+        }
+        composable(Routes.CATEGORY, arguments = listOf(longArgument(CategoryViewModel.CATEGORY_ID_ARG))) {
+            CategoryScreen(
+                onBack = back,
+                onOpenExercise = { navController.navigate(Routes.exercise(it)) },
+                onNewExercise = { navController.navigate(Routes.newExercise(it)) },
+            )
+        }
+        composable(
+            Routes.EXERCISE_FORM,
+            arguments = listOf(
+                longArgument(CategoryViewModel.CATEGORY_ID_ARG, NO_ID),
+                longArgument(ExerciseFormViewModel.EXERCISE_ID_ARG, NO_ID),
+            ),
+        ) {
+            ExerciseFormScreen(onDone = back)
+        }
+        composable(Routes.EXERCISE, arguments = listOf(longArgument(ExerciseFormViewModel.EXERCISE_ID_ARG))) {
+            ExerciseScreen(
+                onBack = back,
+                onEdit = { navController.navigate(Routes.editExercise(it)) },
+                onAddLog = { navController.navigate(Routes.addExerciseLog(it)) },
+                onEditLog = { exerciseId, logId -> navController.navigate(Routes.editExerciseLog(exerciseId, logId)) },
+                onAllLogs = { navController.navigate(Routes.allLogs(it)) },
+            )
+        }
+        composable(Routes.ALL_LOGS, arguments = listOf(longArgument(ExerciseFormViewModel.EXERCISE_ID_ARG))) {
+            AllLogsScreen(
+                onBack = back,
+                onAddLog = { navController.navigate(Routes.addExerciseLog(it)) },
+                onEditLog = { exerciseId, logId -> navController.navigate(Routes.editExerciseLog(exerciseId, logId)) },
+            )
+        }
+        composable(
+            Routes.EXERCISE_LOG_FORM,
+            arguments = listOf(
+                longArgument(ExerciseFormViewModel.EXERCISE_ID_ARG),
+                longArgument(ExerciseLogFormViewModel.LOG_ID_ARG, NO_ID),
+            ),
+        ) {
+            ExerciseLogFormScreen(onDone = back)
         }
     }
 }
