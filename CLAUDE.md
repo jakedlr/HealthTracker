@@ -32,18 +32,19 @@ Personal, single-user Android app for logging weight, food, and sleep, with grap
 
 - Screens never touch DAOs or the database directly. All data access goes through the repository layer.
 - ViewModels expose UI state as `StateFlow`.
-- Pure domain logic (sleep date attribution, daily aggregation, graph range bounds, nutrition math, calendar grid, per-day data marks) lives in plain Kotlin functions with no Android dependencies, so it can be unit tested on the JVM.
+- Pure domain logic (sleep date attribution, daily aggregation, graph window bounds, nutrition math, calendar grid, per-day data marks) lives in plain Kotlin functions with no Android dependencies, so it can be unit tested on the JVM.
 - `observeDataSpan` (in `data/DataSpan.kt`) is the single source of firstAny/lastAny, used by Graphs and History.
 
 ## Time handling
 
 - Food and sleep times are stored as instants (epoch millis, `Long`).
 - Weight is stored as a `LocalDate` (persisted as epoch day via a Room `TypeConverter`).
+- Changing the phone's time zone can move past food logs and sleeps to another day; accepted (see `docs/adr/0001-local-dates-use-current-time-zone.md`).
 - Convert instants to local dates/times using the device's current time zone, only at the edges (display and aggregation).
 
 ## Data model
 
-All nutrition values are **per serving**. Servings may be fractional (e.g. 1.5).
+All nutrition values are **per serving**. Servings may be fractional (e.g. 1.5). A food item has no serving-size field; the size goes in its name when it matters. Carbs are total carbohydrate (fiber included), never net. Vocabulary is defined in `GLOSSARY.md`.
 
 **weight_entry**
 - `date` (LocalDate, primary key): one weigh-in per day; saving again for the same date overwrites it (upsert)
@@ -74,20 +75,20 @@ Editing a food_item must **never** change existing food_log rows; only future lo
 
 ## Domain rules
 
-**Sleep attribution:** assigned date = local date of (`start_at` − 12 hours).
+**Sleep attribution:** sleep date = local date of (`start_at` − 12 hours).
 - Bed 11PM 10/08, wake 7AM 10/09 → 10/08
 - Bed 1AM 10/09 → 10/08
 - Nap at 2PM 10/09 → 10/09 (accepted simplification)
 - Starting exactly at noon counts toward that day; 11:59 AM counts toward the previous day. A sleep spanning noon counts by its start.
 - The 12 hours come off the **local clock time** (not the instant), so the noon cutoff stays at exactly noon on daylight-saving days.
-- Daily sleep = sum of durations of all entries assigned to that date.
+- Daily sleep = sum of durations of all entries with that sleep date.
 
-**Daily aggregation:** calories and each macro are summed per local day; sleep is total hours per assigned day; weight is the single value for that day. **Days with no data are gaps, never zeros**, on every graph.
+**Daily aggregation:** calories and each macro are summed per local day; sleep is total hours per sleep date; weight is the single value for that day. **Days with no data are gaps, never zeros**, on every graph.
 
-**Graph range** (shared by all four graphs). Ranges: last week, last month, last 3 months, all time.
+**Graph window** (shared by all four graphs), set by the selected **range**: last week, last month, last 3 months, all time.
 - `firstAny` = earliest first measurement across weight, food, and sleep
 - `lastAny` = latest last measurement across weight, food, and sleep
-- Each measurement contributes its date: weight its `date`, food the local date of `eaten_at`, sleep its **assigned** date.
+- Each measurement contributes its date: weight its `date`, food the local date of `eaten_at`, sleep its **sleep date**.
 - Start = max(`firstAny`, today − range) (for "all time," Start = `firstAny`)
 - End = min(today, `lastAny`)
 - "today − range": last week = `today.minusDays(6)` (**7 calendar days counting today**); last month = `minusMonths(1)`; last 3 months = `minusMonths(3)`. If start > end (all data older than the range), there's nothing to plot.
@@ -98,18 +99,18 @@ Editing a food_item must **never** change existing food_log rows; only future lo
 - Weight: line with dots, connected across gaps; y-axis padded around the data.
 - Calories: bars per day, y from 0. A day with no food has no bar.
 - Macros: four lines with dots (protein, carbs, fat, fiber) on one chart, y from 0, with a color legend.
-- Sleep: bars of hours per assigned day, y from 0.
+- Sleep: bars of hours per sleep date, y from 0.
 - Date labels: weekday names for a week, M/d for longer spans, M/d/yy beyond about a year; about five labels. Tapping shows a marker with the date and exact value(s).
 - Each card shows an empty state when its own series has nothing in the window.
 
 **Input validation**
 - Weight: greater than 0 and at most 1000 lbs.
-- Servings: greater than 0, fractions allowed. Nutrients: 0 or more, all five required. Decimal commas are accepted.
+- Servings: greater than 0, fractions allowed. Nutrition values: 0 or more, all five required. Decimal commas are accepted.
 - Date pickers block future dates, except the sleep **Woke up** date.
 
 ## Screens
 
-- **Home:** today's weight, calories, and macros; previous day's sleep (i.e. last night, per the attribution rule: total sleep assigned to yesterday, shown as "7 h 45 m" or "No sleep logged"). Buttons to every screen below.
+- **Home:** today's weight, calories, and macros; previous day's sleep (i.e. last night, per the attribution rule: total sleep whose sleep date is yesterday, naps included, shown as "7 h 45 m" or "No sleep logged"). Buttons to every screen below.
 - **Add food:** scan barcode, search library, or enter manually. Choose servings; date/time defaults to now but is editable.
   - Search results: most recently logged first, then never-logged items alphabetically.
   - Known barcode → Log food for that item. Unknown barcode → New food with the barcode attached, saved to the library with the barcode.
@@ -124,11 +125,11 @@ Editing a food_item must **never** change existing food_log rows; only future lo
 - **Graphs:** weight, calories, macros (protein/carbs/fat/fiber on one chart), sleep; range selector.
 - **History:** month calendar, swipe between months; tap a day to view and edit/delete that day's weight, food logs, and sleep.
   - Months: from the month of the earliest data (`observeDataSpan`) to the current month; opens on the current month; ‹ › buttons as well as swiping. Week start follows the phone's locale.
-  - Each day shows up to three dots: weight (primary), food (tertiary), sleep (secondary), matching the graph colors. Sleep marks its **assigned** date; food its local date. Today is outlined; future days are dimmed and not tappable. Any past day (even empty) opens its Day screen.
+  - Each day shows up to three dots: weight (primary), food (tertiary), sleep (secondary), matching the graph colors. Sleep marks its **sleep date**; food its local date. Today is outlined; future days are dimmed and not tappable. Any past day (even empty) opens its Day screen.
 - **Day screen** (`day/{epochDay}`): full date; Weight, Food, and Sleep sections, each live-updating.
   - Weight: value with **Edit** (opens Add weight locked to that date) and **Delete** (confirmation); or **Add weight**.
   - Food: day totals, then each log (time, name, servings, kcal). Tapping a log opens **Edit food log**: servings and date/time only, with **Delete**. The nutrition snapshot never changes; totals recalculate from it.
-  - Sleep: total, then each entry assigned to the day (start – end, with the date shown for a side that falls on another day). Tapping opens Add sleep in **edit mode** (pre-filled; overlap check ignores the entry itself), with **Delete**.
+  - Sleep: total, then each entry whose sleep date is that day (start – end, with the date shown for a side that falls on another day). Tapping opens Add sleep in **edit mode** (pre-filled; overlap check ignores the entry itself), with **Delete**.
   - Each section has an **Add** shortcut preset to that day: Add weight is locked to the day; food defaults to that day at the current time of day; Add sleep's pickers suggest 11 PM that day (fields still start empty).
   - Editing a time can move an entry to another day; it then disappears from this Day screen.
   - Weight edits keep the date locked; to move a weigh-in, delete it and add it on the right day.
@@ -142,7 +143,7 @@ Editing a food_item must **never** change existing food_log rows; only future lo
 ## Data safety
 
 - Export/import a copy of the database via the Storage Access Framework (user picks the location, e.g. Downloads; no storage permissions). Import replaces current data after a confirmation dialog.
-- **Export** takes its snapshot with `VACUUM INTO` (a complete, consistent copy that includes the WAL, so writes during export can't produce a torn file), then copies that snapshot to the user's chosen location. Suggested name: `health-tracker-YYYY-MM-DD.db`.
+- **Export** takes a consistent copy with `VACUUM INTO` (complete, and includes the WAL, so writes during export can't produce a torn file), then copies it to the user's chosen location. Suggested name: `health-tracker-YYYY-MM-DD.db`.
 - **Import:**
   - Copies the picked file to app-private cache, then checks it before anything changes: the SQLite header, schema version between 1 and the current version (newer files are rejected), required tables for that version, and `PRAGMA integrity_check`.
   - The confirmation dialog compares the file's counts and date span with the phone's.
@@ -154,7 +155,7 @@ Editing a food_item must **never** change existing food_log rows; only future lo
 
 ## Testing
 
-Unit tests are required for: sleep attribution (including crossing midnight and crossing noon), overlap detection, daily aggregation with missing days, graph range bounds, and snapshot math (editing an item doesn't change past totals). Add a Room DAO test for the weight upsert.
+Unit tests are required for: sleep attribution (including crossing midnight and crossing noon), overlap detection, daily aggregation with missing days, graph window bounds, and snapshot math (editing an item doesn't change past totals). Add a Room DAO test for the weight upsert.
 
 Also:
 - Every schema migration gets a `MigrationTestHelper` test (in `androidTest/.../MigrationTest.kt`). The driver-based helper doesn't clean up between tests, so `MigrationTest` deletes its database file in `@Before`.
@@ -181,3 +182,17 @@ Also:
 5. ✅ Remaining graphs + range selector
 6. ✅ History calendar with view/edit/delete
 7. ✅ Export/import (plus dark-mode transition flash fix)
+
+## Agent skills
+
+### Issue tracker
+
+Issues and specs live as local markdown files under `.scratch/<feature>/`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
