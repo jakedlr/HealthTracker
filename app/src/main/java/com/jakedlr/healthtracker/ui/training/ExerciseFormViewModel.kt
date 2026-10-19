@@ -44,7 +44,7 @@ class ExerciseFormViewModel(
     private val repository: TrainingRepository,
 ) : ViewModel() {
     private val exerciseId: Long = savedStateHandle[EXERCISE_ID_ARG] ?: NO_ID
-    private val startCategoryId: Long = savedStateHandle[CategoryViewModel.CATEGORY_ID_ARG] ?: NO_ID
+    private val startCategoryId: Long = savedStateHandle[CATEGORY_ID_ARG] ?: NO_ID
 
     private val _uiState = MutableStateFlow(ExerciseFormUiState(categoryId = startCategoryId))
     val uiState: StateFlow<ExerciseFormUiState> = _uiState.asStateFlow()
@@ -113,13 +113,8 @@ class ExerciseFormViewModel(
     }
 
     companion object {
-        const val EXERCISE_ID_ARG = "exerciseId"
-
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer { ExerciseFormViewModel(createSavedStateHandle(), appContainer().trainingRepository) }
         }
     }
 }
-
-/** Nav argument value for "no category/exercise/log". */
-const val NO_ID = -1L

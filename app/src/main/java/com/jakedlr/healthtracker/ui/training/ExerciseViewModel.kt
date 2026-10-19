@@ -42,7 +42,7 @@ class ExerciseViewModel(
     clock: Clock,
     allLogs: Boolean,
 ) : ViewModel() {
-    val exerciseId: Long = checkNotNull(savedStateHandle[ExerciseFormViewModel.EXERCISE_ID_ARG])
+    val exerciseId: Long = checkNotNull(savedStateHandle[EXERCISE_ID_ARG])
     private val today = LocalDate.now(clock)
 
     private val logs: Flow<List<ExerciseLog>> =

@@ -30,12 +30,12 @@ import com.jakedlr.healthtracker.ui.scan.ScanScreen
 import com.jakedlr.healthtracker.ui.sleep.AddSleepScreen
 import com.jakedlr.healthtracker.ui.sleep.AddSleepViewModel
 import com.jakedlr.healthtracker.ui.training.AllLogsScreen
+import com.jakedlr.healthtracker.ui.training.CATEGORY_ID_ARG
 import com.jakedlr.healthtracker.ui.training.CategoryScreen
-import com.jakedlr.healthtracker.ui.training.CategoryViewModel
+import com.jakedlr.healthtracker.ui.training.EXERCISE_ID_ARG
+import com.jakedlr.healthtracker.ui.training.EXERCISE_LOG_ID_ARG
 import com.jakedlr.healthtracker.ui.training.ExerciseFormScreen
-import com.jakedlr.healthtracker.ui.training.ExerciseFormViewModel
 import com.jakedlr.healthtracker.ui.training.ExerciseLogFormScreen
-import com.jakedlr.healthtracker.ui.training.ExerciseLogFormViewModel
 import com.jakedlr.healthtracker.ui.training.ExerciseScreen
 import com.jakedlr.healthtracker.ui.training.NO_ID
 import com.jakedlr.healthtracker.ui.training.TrainingScreen
@@ -51,9 +51,9 @@ object Routes {
     private const val ITEM_ID = LogFoodViewModel.ITEM_ID_ARG
     private const val SLEEP_ID = AddSleepViewModel.SLEEP_ID_ARG
     private const val DATE_Q = "$DATE_ARG={$DATE_ARG}"
-    private const val CATEGORY_ID = CategoryViewModel.CATEGORY_ID_ARG
-    private const val EXERCISE_ID = ExerciseFormViewModel.EXERCISE_ID_ARG
-    private const val LOG_ID = ExerciseLogFormViewModel.LOG_ID_ARG
+    private const val CATEGORY_ID = CATEGORY_ID_ARG
+    private const val EXERCISE_ID = EXERCISE_ID_ARG
+    private const val LOG_ID = EXERCISE_LOG_ID_ARG
 
     const val HOME = "home"
     const val GRAPHS = "graphs"
@@ -230,7 +230,7 @@ fun HealthTrackerNavHost() {
         composable(Routes.TRAINING) {
             TrainingScreen(onBack = back, onOpenCategory = { navController.navigate(Routes.category(it)) })
         }
-        composable(Routes.CATEGORY, arguments = listOf(longArgument(CategoryViewModel.CATEGORY_ID_ARG))) {
+        composable(Routes.CATEGORY, arguments = listOf(longArgument(CATEGORY_ID_ARG))) {
             CategoryScreen(
                 onBack = back,
                 onOpenExercise = { navController.navigate(Routes.exercise(it)) },
@@ -240,13 +240,13 @@ fun HealthTrackerNavHost() {
         composable(
             Routes.EXERCISE_FORM,
             arguments = listOf(
-                longArgument(CategoryViewModel.CATEGORY_ID_ARG, NO_ID),
-                longArgument(ExerciseFormViewModel.EXERCISE_ID_ARG, NO_ID),
+                longArgument(CATEGORY_ID_ARG, NO_ID),
+                longArgument(EXERCISE_ID_ARG, NO_ID),
             ),
         ) {
             ExerciseFormScreen(onDone = back)
         }
-        composable(Routes.EXERCISE, arguments = listOf(longArgument(ExerciseFormViewModel.EXERCISE_ID_ARG))) {
+        composable(Routes.EXERCISE, arguments = listOf(longArgument(EXERCISE_ID_ARG))) {
             ExerciseScreen(
                 onBack = back,
                 onEdit = { navController.navigate(Routes.editExercise(it)) },
@@ -255,7 +255,7 @@ fun HealthTrackerNavHost() {
                 onAllLogs = { navController.navigate(Routes.allLogs(it)) },
             )
         }
-        composable(Routes.ALL_LOGS, arguments = listOf(longArgument(ExerciseFormViewModel.EXERCISE_ID_ARG))) {
+        composable(Routes.ALL_LOGS, arguments = listOf(longArgument(EXERCISE_ID_ARG))) {
             AllLogsScreen(
                 onBack = back,
                 onAddLog = { navController.navigate(Routes.addExerciseLog(it)) },
@@ -265,8 +265,8 @@ fun HealthTrackerNavHost() {
         composable(
             Routes.EXERCISE_LOG_FORM,
             arguments = listOf(
-                longArgument(ExerciseFormViewModel.EXERCISE_ID_ARG),
-                longArgument(ExerciseLogFormViewModel.LOG_ID_ARG, NO_ID),
+                longArgument(EXERCISE_ID_ARG),
+                longArgument(EXERCISE_LOG_ID_ARG, NO_ID),
             ),
         ) {
             ExerciseLogFormScreen(onDone = back)

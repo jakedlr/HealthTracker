@@ -48,7 +48,7 @@ class TrainingRepositoryTest {
         sidedness: Sidedness = Sidedness.DOUBLE,
     ): Long = (repository.createExercise(categoryId, name, sidedness, LoadUnit.LBS) as TrainingSaveResult.Saved).id
 
-    private fun both(load: Double, reps: Int) = TopSets.Both(TopSet(load, reps))
+    private fun double(load: Double, reps: Int) = TopSets.Double(TopSet(load, reps))
 
     private suspend fun categoryNames() = repository.observeCategories().first().map { it.name }
 
@@ -179,21 +179,21 @@ class TrainingRepositoryTest {
     fun changingDefaultUnit_leavesPastLogsInTheirOwnUnit() = runTest {
         val legs = category("Leg day")
         val press = exercise(legs, "Leg press")
-        repository.saveLog(press, null, oct15, LoadUnit.LBS, both(200.0, 10))
+        repository.saveLog(press, null, oct15, LoadUnit.LBS, double(200.0, 10))
 
         repository.updateExercise(repository.getExercise(press)!!.copy(defaultUnit = LoadUnit.KG))
 
         val log = repository.observeAllLogs(press).first().single()
         assertEquals(LoadUnit.LBS, log.unit)
-        assertEquals(both(200.0, 10), log.topSets)
+        assertEquals(double(200.0, 10), log.topSets)
     }
 
     @Test
     fun deletingExercise_removesItsLogs() = runTest {
         val legs = category("Leg day")
         val squat = exercise(legs, "Squat")
-        repository.saveLog(squat, null, oct15, LoadUnit.LBS, both(135.0, 8))
-        repository.saveLog(squat, null, oct15.plusDays(2), LoadUnit.LBS, both(140.0, 8))
+        repository.saveLog(squat, null, oct15, LoadUnit.LBS, double(135.0, 8))
+        repository.saveLog(squat, null, oct15.plusDays(2), LoadUnit.LBS, double(140.0, 8))
         assertEquals(2, repository.countLogs(squat))
 
         repository.deleteExercise(squat)
@@ -208,8 +208,8 @@ class TrainingRepositoryTest {
         val legs = category("Leg day")
         val squat = exercise(legs, "Squat")
         exercise(legs, "Lunge")
-        repository.saveLog(squat, null, oct15.minusDays(3), LoadUnit.LBS, both(130.0, 8))
-        repository.saveLog(squat, null, oct15, LoadUnit.LBS, both(135.0, 8))
+        repository.saveLog(squat, null, oct15.minusDays(3), LoadUnit.LBS, double(130.0, 8))
+        repository.saveLog(squat, null, oct15, LoadUnit.LBS, double(135.0, 8))
 
         val lastLogged = repository.observeExercises(legs).first().associate { it.exercise.name to it.lastLogged }
 
@@ -222,24 +222,24 @@ class TrainingRepositoryTest {
     fun savingForADateThatHasALog_replacesIt() = runTest {
         val legs = category("Leg day")
         val squat = exercise(legs, "Squat")
-        repository.saveLog(squat, null, oct15, LoadUnit.LBS, both(135.0, 8))
+        repository.saveLog(squat, null, oct15, LoadUnit.LBS, double(135.0, 8))
 
-        repository.saveLog(squat, null, oct15, LoadUnit.KG, both(60.0, 6))
+        repository.saveLog(squat, null, oct15, LoadUnit.KG, double(60.0, 6))
 
         val logs = repository.observeAllLogs(squat).first()
         assertEquals(1, logs.size)
         assertEquals(LoadUnit.KG, logs.single().unit)
-        assertEquals(both(60.0, 6), logs.single().topSets)
+        assertEquals(double(60.0, 6), logs.single().topSets)
     }
 
     @Test
     fun editingALogsDate_movesIt() = runTest {
         val legs = category("Leg day")
         val squat = exercise(legs, "Squat")
-        repository.saveLog(squat, null, oct15, LoadUnit.LBS, both(135.0, 8))
+        repository.saveLog(squat, null, oct15, LoadUnit.LBS, double(135.0, 8))
         val original = repository.getLog(squat, oct15)!!
 
-        repository.saveLog(squat, original.id, oct15.minusDays(1), LoadUnit.LBS, both(135.0, 8))
+        repository.saveLog(squat, original.id, oct15.minusDays(1), LoadUnit.LBS, double(135.0, 8))
 
         assertNull(repository.getLog(squat, oct15))
         assertEquals(original.id, repository.getLog(squat, oct15.minusDays(1))!!.id)
@@ -263,7 +263,7 @@ class TrainingRepositoryTest {
         val squat = exercise(legs, "Squat")
         // Saved out of order to make sure ordering comes from the date.
         for (day in (0L until 12L).shuffled()) {
-            repository.saveLog(squat, null, oct15.minusDays(day), LoadUnit.LBS, both(100.0 + day, 5))
+            repository.saveLog(squat, null, oct15.minusDays(day), LoadUnit.LBS, double(100.0 + day, 5))
         }
 
         val recent = repository.observeRecentLogs(squat).first().map { it.date }
@@ -276,8 +276,8 @@ class TrainingRepositoryTest {
     fun deletingALog_removesOnlyThatLog() = runTest {
         val legs = category("Leg day")
         val squat = exercise(legs, "Squat")
-        repository.saveLog(squat, null, oct15, LoadUnit.LBS, both(135.0, 8))
-        repository.saveLog(squat, null, oct15.minusDays(2), LoadUnit.LBS, both(130.0, 8))
+        repository.saveLog(squat, null, oct15, LoadUnit.LBS, double(135.0, 8))
+        repository.saveLog(squat, null, oct15.minusDays(2), LoadUnit.LBS, double(130.0, 8))
 
         repository.deleteLog(repository.getLog(squat, oct15)!!.id)
 

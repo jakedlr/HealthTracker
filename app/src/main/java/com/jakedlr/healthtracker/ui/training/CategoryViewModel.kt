@@ -87,8 +87,6 @@ class CategoryViewModel(
     }
 
     companion object {
-        const val CATEGORY_ID_ARG = "categoryId"
-
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer { CategoryViewModel(createSavedStateHandle(), appContainer().trainingRepository) }
         }

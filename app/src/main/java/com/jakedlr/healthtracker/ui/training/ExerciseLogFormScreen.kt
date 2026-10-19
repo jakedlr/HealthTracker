@@ -60,7 +60,7 @@ fun ExerciseLogFormScreen(
         onBack = onDone,
         onDateChange = viewModel::onDateChange,
         onUnitChange = viewModel::onUnitChange,
-        onBothChange = viewModel::onBothChange,
+        onDoubleChange = viewModel::onDoubleChange,
         onLeftChange = viewModel::onLeftChange,
         onRightChange = viewModel::onRightChange,
         onSave = viewModel::save,
@@ -84,7 +84,7 @@ private fun ExerciseLogFormContent(
     onBack: () -> Unit,
     onDateChange: (LocalDate) -> Unit,
     onUnitChange: (LoadUnit) -> Unit,
-    onBothChange: (TopSetInput) -> Unit,
+    onDoubleChange: (TopSetInput) -> Unit,
     onLeftChange: (TopSetInput) -> Unit,
     onRightChange: (TopSetInput) -> Unit,
     onSave: () -> Unit,
@@ -126,7 +126,7 @@ private fun ExerciseLogFormContent(
                 onSelect = onUnitChange,
             )
             when (state.exercise?.sidedness) {
-                Sidedness.DOUBLE -> TopSetFields(state.both, state.unit, state.showErrors, onBothChange)
+                Sidedness.DOUBLE -> TopSetFields(state.double, state.unit, state.showErrors, onDoubleChange)
                 Sidedness.SINGLE -> {
                     SideFields("Left", state.left, state.unit, state.showErrors, onLeftChange)
                     SideFields("Right", state.right, state.unit, state.showErrors, onRightChange)
@@ -218,7 +218,7 @@ private fun ExerciseLogFormPreview() {
                 left = TopSetInput("20", "10"),
                 right = TopSetInput(skipped = true),
             ),
-            onBack = {}, onDateChange = {}, onUnitChange = {}, onBothChange = {},
+            onBack = {}, onDateChange = {}, onUnitChange = {}, onDoubleChange = {},
             onLeftChange = {}, onRightChange = {}, onSave = {}, onDelete = {},
         )
     }

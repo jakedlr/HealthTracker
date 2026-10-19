@@ -81,14 +81,14 @@ data class ExerciseLog(
 ) {
     val topSets: TopSets
         get() = if (load != null && reps != null) {
-            TopSets.Both(TopSet(load, reps))
+            TopSets.Double(TopSet(load, reps))
         } else {
             TopSets.PerSide(topSet(leftLoad, leftReps), topSet(rightLoad, rightReps))
         }
 
     companion object {
         fun of(exerciseId: Long, date: LocalDate, unit: LoadUnit, sets: TopSets, id: Long = 0) = when (sets) {
-            is TopSets.Both -> ExerciseLog(id, exerciseId, date, unit, load = sets.set.load, reps = sets.set.reps)
+            is TopSets.Double -> ExerciseLog(id, exerciseId, date, unit, load = sets.set.load, reps = sets.set.reps)
             is TopSets.PerSide -> ExerciseLog(
                 id, exerciseId, date, unit,
                 leftLoad = sets.left?.load, leftReps = sets.left?.reps,

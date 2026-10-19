@@ -37,17 +37,16 @@ class TrainingRepository(
     /** Adds the category at the bottom of the list. */
     suspend fun createCategory(name: String): TrainingSaveResult =
         database.withTransaction {
-            val trimmed = name.trim()
-            if (dao.getCategoryByName(trimmed) != null) return@withTransaction TrainingSaveResult.NameTaken
+            val trimmed = availableName(name, selfId = null) { dao.getCategoryByName(it)?.id }
+                ?: return@withTransaction TrainingSaveResult.NameTaken
             val id = dao.insertCategory(ExerciseCategory(name = trimmed, position = dao.nextCategoryPosition()))
             TrainingSaveResult.Saved(id)
         }
 
     suspend fun renameCategory(id: Long, name: String): TrainingSaveResult =
         database.withTransaction {
-            val trimmed = name.trim()
-            val sameName = dao.getCategoryByName(trimmed)
-            if (sameName != null && sameName.id != id) return@withTransaction TrainingSaveResult.NameTaken
+            val trimmed = availableName(name, selfId = id) { dao.getCategoryByName(it)?.id }
+                ?: return@withTransaction TrainingSaveResult.NameTaken
             val category = dao.getCategory(id) ?: return@withTransaction TrainingSaveResult.Saved(id)
             dao.updateCategory(category.copy(name = trimmed))
             TrainingSaveResult.Saved(id)
@@ -62,10 +61,7 @@ class TrainingRepository(
         }
 
     /** Saves the order after a drag: [idsInOrder] is the whole category list, top to bottom. */
-    suspend fun reorderCategories(idsInOrder: List<Long>) =
-        database.withTransaction {
-            idsInOrder.forEachIndexed { position, id -> dao.setCategoryPosition(id, position) }
-        }
+    suspend fun reorderCategories(idsInOrder: List<Long>) = savePositions(idsInOrder, dao::setCategoryPosition)
 
     /** A category's exercises in the user's order, each with its last logged date. */
     fun observeExercises(categoryId: Long): Flow<List<ExerciseWithLastLogged>> = dao.observeExercises(categoryId)
@@ -82,8 +78,8 @@ class TrainingRepository(
         defaultUnit: LoadUnit,
     ): TrainingSaveResult =
         database.withTransaction {
-            val trimmed = name.trim()
-            if (dao.getExerciseByName(trimmed) != null) return@withTransaction TrainingSaveResult.NameTaken
+            val trimmed = availableName(name, selfId = null) { dao.getExerciseByName(it)?.id }
+                ?: return@withTransaction TrainingSaveResult.NameTaken
             val exercise = Exercise(
                 categoryId = categoryId,
                 name = trimmed,
@@ -101,9 +97,8 @@ class TrainingRepository(
     suspend fun updateExercise(exercise: Exercise): TrainingSaveResult =
         database.withTransaction {
             val current = dao.getExercise(exercise.id) ?: return@withTransaction TrainingSaveResult.Saved(exercise.id)
-            val trimmed = exercise.name.trim()
-            val sameName = dao.getExerciseByName(trimmed)
-            if (sameName != null && sameName.id != exercise.id) return@withTransaction TrainingSaveResult.NameTaken
+            val trimmed = availableName(exercise.name, selfId = exercise.id) { dao.getExerciseByName(it)?.id }
+                ?: return@withTransaction TrainingSaveResult.NameTaken
             if (exercise.sidedness != current.sidedness && dao.countLogs(exercise.id) > 0) {
                 return@withTransaction TrainingSaveResult.SidednessLocked
             }
@@ -120,10 +115,7 @@ class TrainingRepository(
     suspend fun deleteExercise(id: Long) = dao.deleteExercise(id)
 
     /** Saves the order after a drag: [idsInOrder] is one category's whole exercise list, top to bottom. */
-    suspend fun reorderExercises(idsInOrder: List<Long>) =
-        database.withTransaction {
-            idsInOrder.forEachIndexed { position, id -> dao.setExercisePosition(id, position) }
-        }
+    suspend fun reorderExercises(idsInOrder: List<Long>) = savePositions(idsInOrder, dao::setExercisePosition)
 
     fun observeRecentLogs(exerciseId: Long): Flow<List<ExerciseLog>> =
         dao.observeRecentLogs(exerciseId, RECENT_LOG_COUNT)
@@ -153,4 +145,20 @@ class TrainingRepository(
         }
 
     suspend fun deleteLog(id: Long) = dao.deleteLog(id)
+
+    /**
+     * [name] trimmed, or null if another row already uses it (ignoring case). [selfId] is the row being
+     * renamed, which may keep its own name; [findOwner] returns the id of the row with a given name.
+     */
+    private suspend fun availableName(name: String, selfId: Long?, findOwner: suspend (String) -> Long?): String? {
+        val trimmed = name.trim()
+        val owner = findOwner(trimmed)
+        return trimmed.takeIf { owner == null || owner == selfId }
+    }
+
+    /** Rewrites a whole list's positions in one transaction: [idsInOrder] top to bottom. */
+    private suspend fun savePositions(idsInOrder: List<Long>, setPosition: suspend (id: Long, position: Int) -> Unit) =
+        database.withTransaction {
+            idsInOrder.forEachIndexed { position, id -> setPosition(id, position) }
+        }
 }

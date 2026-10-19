@@ -29,19 +29,24 @@ data class TopSet(val load: Double, val reps: Int)
 
 /** What an exercise log records, shaped by the exercise's sidedness. */
 sealed interface TopSets {
-    data class Both(val set: TopSet) : TopSets
+    /** A double-sided exercise: both sides together. */
+    data class Double(val set: TopSet) : TopSets
 
-    /** A null side was skipped; never both. */
+    /** A single-sided exercise. A null side was skipped; never both. */
     data class PerSide(val left: TopSet?, val right: TopSet?) : TopSets {
         init {
-            require(left != null || right != null) { "At most one side may be skipped" }
+            require(hasASide(left, right)) { "At most one side may be skipped" }
+        }
+
+        companion object {
+            fun hasASide(left: TopSet?, right: TopSet?): Boolean = left != null || right != null
         }
     }
 }
 
 /** Left and right top sets for a single-sided exercise; null if both sides were skipped. */
 fun perSide(left: TopSet?, right: TopSet?): TopSets.PerSide? =
-    if (left == null && right == null) null else TopSets.PerSide(left, right)
+    if (TopSets.PerSide.hasASide(left, right)) TopSets.PerSide(left, right) else null
 
 /** The list after dragging the item at [from] to index [to]; the items in between shift by one. */
 fun <T> List<T>.moved(from: Int, to: Int): List<T> =

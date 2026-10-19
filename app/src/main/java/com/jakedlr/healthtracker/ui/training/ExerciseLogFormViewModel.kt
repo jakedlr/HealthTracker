@@ -53,7 +53,7 @@ data class ExerciseLogFormUiState(
     val existingForDate: ExerciseLog? = null,
     val unit: LoadUnit = LoadUnit.LBS,
     /** Double-sided input. */
-    val both: TopSetInput = TopSetInput(),
+    val double: TopSetInput = TopSetInput(),
     val left: TopSetInput = TopSetInput(),
     val right: TopSetInput = TopSetInput(),
     val showErrors: Boolean = false,
@@ -76,8 +76,8 @@ class ExerciseLogFormViewModel(
     private val repository: TrainingRepository,
     clock: Clock,
 ) : ViewModel() {
-    private val exerciseId: Long = checkNotNull(savedStateHandle[ExerciseFormViewModel.EXERCISE_ID_ARG])
-    private val logId: Long = savedStateHandle[LOG_ID_ARG] ?: NO_ID
+    private val exerciseId: Long = checkNotNull(savedStateHandle[EXERCISE_ID_ARG])
+    private val logId: Long = savedStateHandle[EXERCISE_LOG_ID_ARG] ?: NO_ID
 
     private val _uiState = MutableStateFlow(
         LocalDate.now(clock).let { ExerciseLogFormUiState(today = it, date = it) },
@@ -119,7 +119,7 @@ class ExerciseLogFormViewModel(
                     // Don't carry another date's untouched values over to a date with no log.
                     previous != null && s.inputsMatch(previous) -> s.copy(
                         unit = s.exercise?.defaultUnit ?: s.unit,
-                        both = TopSetInput(),
+                        double = TopSetInput(),
                         left = TopSetInput(),
                         right = TopSetInput(),
                     )
@@ -131,7 +131,7 @@ class ExerciseLogFormViewModel(
 
     fun onUnitChange(unit: LoadUnit) = _uiState.update { it.copy(unit = unit) }
 
-    fun onBothChange(input: TopSetInput) = _uiState.update { it.copy(both = input) }
+    fun onDoubleChange(input: TopSetInput) = _uiState.update { it.copy(double = input) }
 
     fun onLeftChange(input: TopSetInput) = _uiState.update { it.copy(left = input) }
 
@@ -141,7 +141,7 @@ class ExerciseLogFormViewModel(
         val state = _uiState.value
         val exercise = state.exercise ?: return
         val sets: TopSets? = when (exercise.sidedness) {
-            Sidedness.DOUBLE -> state.both.parse()?.let { TopSets.Both(it) }
+            Sidedness.DOUBLE -> state.double.parse()?.let { TopSets.Double(it) }
             Sidedness.SINGLE -> {
                 val left = if (state.left.skipped) null else state.left.parse()
                 val right = if (state.right.skipped) null else state.right.parse()
@@ -174,11 +174,11 @@ class ExerciseLogFormViewModel(
     /** True if the inputs still hold exactly what [log] would pre-fill (nothing typed since). */
     private fun ExerciseLogFormUiState.inputsMatch(log: ExerciseLog): Boolean {
         val prefilled = prefilledFrom(log)
-        return unit == prefilled.unit && both == prefilled.both && left == prefilled.left && right == prefilled.right
+        return unit == prefilled.unit && double == prefilled.double && left == prefilled.left && right == prefilled.right
     }
 
     private fun ExerciseLogFormUiState.prefilledFrom(log: ExerciseLog) = when (val sets = log.topSets) {
-        is TopSets.Both -> copy(existingForDate = log, unit = log.unit, both = TopSetInput.from(sets.set))
+        is TopSets.Double -> copy(existingForDate = log, unit = log.unit, double = TopSetInput.from(sets.set))
         is TopSets.PerSide -> copy(
             existingForDate = log,
             unit = log.unit,
@@ -188,8 +188,6 @@ class ExerciseLogFormViewModel(
     }
 
     companion object {
-        const val LOG_ID_ARG = "logId"
-
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val container = appContainer()

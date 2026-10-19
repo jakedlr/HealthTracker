@@ -30,7 +30,7 @@ fun formatAmount(value: Double): String =
 
 /** An exercise log's top sets, e.g. "135 lbs × 8" or "L 20 × 10 · R 22.5 × 8 lbs" ("—" for a skipped side). */
 fun formatTopSets(sets: TopSets, unit: LoadUnit): String = when (sets) {
-    is TopSets.Both -> "${formatAmount(sets.set.load)} ${unit.label} × ${sets.set.reps}"
+    is TopSets.Double -> "${formatAmount(sets.set.load)} ${unit.label} × ${sets.set.reps}"
     is TopSets.PerSide -> "L ${side(sets.left)} · R ${side(sets.right)} ${unit.label}"
 }
 
